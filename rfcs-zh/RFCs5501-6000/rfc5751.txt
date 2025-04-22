@@ -1,0 +1,1257 @@
+# RFC 5751 中文翻译 (stub)
+# 原文文件: ../../rfcs/RFCs5501-6000/rfc5751.txt
+
+互联网工程任务组（IETF）                       B. Ramsdell
+评论请求编号：5751                              Brute Squad Labs
+废止：3851                                                S. Turner
+类别：标准轨道                                              IECA
+ISSN：2070-1721                                              2010年1月
+
+   安全/多用途互联网邮件扩展（S/MIME）版本3.2
+                         消息规范
+
+摘要
+
+   本文档定义了安全/多用途互联网邮件扩展（S/MIME）版本3.2。S/MIME提供了一种一致的方式，用于发送和接收安全的MIME数据。数字签名提供身份验证、消息完整性和不可否认性（带有来源证明）。加密则提供数据的机密性。压缩可以用来减小数据大小。本文件废止RFC 3851。
+
+本备忘录的状态
+
+   这是一个互联网标准轨道的文档。
+
+   本文档由互联网工程任务组（IETF）制定。代表了IETF社区的共识。已经过公开审查，并已获互联网工程指导组（IESG）批准发布。关于互联网标准的更多信息，请参见RFC 5741第2节。
+
+   有关本文件当前状态、任何勘误以及如何提供反馈的信息，可以在http://www.rfc-editor.org/info/rfc5751获取。
+
+（以下为版权声明、目录、详细内容等部分，略作总结）
+
+版权声明
+
+   本文件的版权归2010年IETF信托及文档作者所有。保留所有权利。
+
+   本文件遵循BCP 78及IETF信托关于IETF文档的法律规定（http://trustee.ietf.org/license-info），请在发布时仔细阅读。这些文件描述了您对本文件的权利和限制。从本文件中提取的代码组件必须包含简化BSD许可证文本（详见第4节e）并且按简化BSD许可证提供，不提供任何担保。
+
+   本文件可能包含在2008年11月10日之前发布或公开的IETF文档或贡献的内容。这些内容的版权控制人可能未授权IETF信托对其进行修改。未经适当授权，不能在IETF标准流程之外修改本文件，也不能在IETF标准流程之外创建其派生作品，除非是为了将其格式化为RFC或翻译成非英语语言。
+
+（以下为目录、章节内容简介）
+
+1. 引言
+
+   S/MIME（安全/多用途互联网邮件扩展）提供了一种一致的方式，用于发送和接收安全的MIME数据。基于流行的互联网MIME标准，S/MIME为电子消息应用提供以下密码学安全服务：身份验证、消息完整性和来源不可否认性（通过数字签名），以及数据机密性（通过加密）。作为补充服务，S/MIME还支持消息压缩。
+
+   S/MIME可以由传统的邮件用户代理（MUA）使用，为发出的邮件添加密码学安全服务，也能解释接收邮件中的安全服务。然而，S/MIME不限于邮件，还可以用于任何传输MIME数据的机制，如HTTP或SIP。因此，S/MIME利用MIME的对象特性，允许在混合传输系统中交换安全消息。
+
+   此外，S/MIME还可以在自动化的消息传输代理中使用，这些代理使用无需人工干预的密码学安全服务，例如对软件生成的文档签名，以及通过互联网发送的传真消息的加密。
+
+1.1. 规范概述
+
+   本文档描述了为MIME数据添加密码签名和加密服务的协议。MIME标准[MIME-SPEC]提供了互联网消息内容的一般结构，并允许扩展以支持新的内容类型应用。
+
+   本规范定义了如何创建符合密码消息语法（CMS）RFC 5652 [CMS]的密码增强的MIME主体部分，该语法源自PKCS #7 [PKCS-7]。同时定义了application/pkcs7-mime媒体类型，用于传输这些主体部分。
+
+   本文还讨论了如何使用[MIME-SECURE]中定义的multipart/signed媒体类型，传输S/MIME签名消息。multipart/signed与application/pkcs7-signature媒体类型结合使用，用于传输分离的S/MIME签名。
+
+   为了创建S/MIME消息，S/MIME代理必须遵循本文档的规范，以及密码消息语法（CMS）[CMS]、[CMSALG]、[RSAPSS]、[RSAOAEP]和[CMS-SHA2]中的相关规范。
+
+   在整个规范中，针对接收代理处理入站消息提出了要求和建议。对于发出代理创建出站消息，也有不同的要求和建议。一般而言，最佳策略是“对接收内容宽容，对发送内容谨慎”。大部分要求针对入站消息的处理，建议则主要用于出站消息的创建。
+
+   这种对接收和发出代理要求的区分，也源于可能存在涉及非传统互联网邮件客户端的软件的S/MIME系统。例如，自动化流程可能无法接收加密消息，因此对不同类型代理的要求和建议会单独列出。
+
+1.2. 定义
+
+   本规范中，以下定义适用：
+
+   ASN.1：抽象语法标记1，由ITU-T推荐X.680定义。
+
+   BER：ASN.1的基本编码规则，由ITU-T推荐X.690定义。
+
+   证书：一种将实体名称与公钥绑定的类型，带有数字签名。
+
+   DER：ASN.1的区别编码规则，由ITU-T推荐X.690定义。
+
+   7位数据：每行少于998字符的文本数据，字符没有设置第8位，没有NULL字符。<CR>和<LF>仅作为<CR><LF>行尾分隔符出现。
+
+   8位数据：每行少于998字符的文本数据，字符中没有NULL字符。<CR>和<LF>仅作为<CR><LF>行尾分隔符出现。
+
+   二进制数据：任意数据。
+
+   传输编码：对数据进行可逆变换，使得8位或二进制数据可以通过只传输7位数据的通道发送。
+
+   接收代理：解释和处理S/MIME CMS对象、包含CMS内容类型的MIME主体，或两者的软体。
+
+   发送代理：创建S/MIME CMS内容类型、包含CMS内容类型的MIME主体，或两者的软体。
+
+   S/MIME代理：用户软件，既可以作为接收代理，也可以作为发出代理。
+
+1.3. 本文使用的约定
+
+   本文中，“MUST”、“MUST NOT”、“REQUIRED”、“SHALL”、“SHALL NOT”、“SHOULD”、“SHOULD NOT”、“RECOMMENDED”、“MAY”、“OPTIONAL”这些关键词的解释遵循[MUSTSHOULD]。
+
+   另外定义一些术语：
+
+   SHOULD+：与SHOULD相同，但作者预期未来会提升为MUST。
+
+   SHOULD-：与SHOULD相同，但作者预期未来会降为MAY。
+
+   MUST-：与MUST相同，但作者预期未来不再是必须，可能变为SHOULD或SHOULD-。
+
+1.4. 与早期S/MIME实践的兼容性
+
+   S/MIME 3.2版本的代理应尽可能与早期版本的代理实现最大程度的互操作性。S/MIME v2详见RFC 2311至RFC 2315，v3详见RFC 2630至RFC 2634及RFC 5035，v3.1详见RFC 3850、3851、3852、2634和5035。RFC 2311还包含S/MIME发展的历史信息。
+
+1.5. 从S/MIME v3到v3.1的变更
+
+   RSA公钥算法改为必须实现密钥封装算法，Diffie-Hellman（DH）改为应实现。
+
+   AES对称加密算法被列为应实现。
+
+   RSA公钥算法改为必须实现签名算法。
+
+   关于使用“空”SignedData消息传输证书的模糊描述已澄清，允许传输证书吊销列表（CRL）。
+
+   现在明确讨论了某些MIME实体使用二进制编码。
+
+   增加了通过message/rfc822媒体类型保护头部的内容。
+
+   允许使用CompressedData CMS类型，并增加了相关媒体类型和文件扩展名。
+
+1.6. 自S/MIME v3.1以来的变更
+
+   编辑性变更，例如将“MIME类型”改为“媒体类型”，将content-type改为Content-Type。
+
+   将“本文档使用的约定”移至第1.3节，新增SHOULD+、SHOULD-、MUST-定义。
+
+   第1.1节和附录A：增加了关于RSASSA-PSS、RSAES-OAEP和SHA2 CMS算法的RFC引用，增加了CMS多签名者的说明。
+
+   第1.2节：ASN.1的引用更新为X.680，BER和DER更新为X.690。
+
+   第1.4节：增加了对S/MIME v3.1 RFC的引用。
+
+   第2.1节（摘要算法）：SHA-256被列为MUST，SHA-1和MD5为SHOULD-。
+
+   第2.2节（签名算法）：RSA配合SHA-256为MUST，DSA配合SHA-256为SHOULD+，RSA配合SHA-1、DSA配合SHA-1、RSA配合MD5为SHOULD-，RSASSA-PSS配合SHA-256为SHOULD+。还说明了S/MIME v3.1客户端支持的内容。
+
+   第2.3节（密钥加密）：DH改为SHOULD-，RSAES-OAEP为SHOULD+，详细说明了密钥封装算法的要求。
+
+   第2.5.1节：增加接收代理必须支持GeneralizedTime和UTCTime的要求。
+
+   第2.5.2节：将“sha1WithRSAEncryption”改为“sha256WithRSAEncryption”，将“DES-3EDE-CBC”改为“AES-128 CBC”，删除RC5示例。
+
+   第2.5.2.1节：删除了关于已弃用RC2的内容。
+
+   第2.7、2.7.1节及附录A：移除对RC2/40的引用。
+
+   第2.7节（内容加密）：AES-128 CBC被列为MUST，AES-192和AES-256 CBC为SHOULD+，三重DES改为SHOULD-。
+
+（全文内容较长，以上为主要内容的翻译概要，完整翻译请提供具体段落或章节。）
+
+第2.7.1节：将2.7.2.1至2.7.2.4节中的指针更新为2.7.1.1至2.7.1.2。
+
+第3.1.1节：删除关于MIME字符集的相关内容。
+
+第3.2.2节和3.6节：将“encrypted”替换为“enveloped”。更新OID示例，改用AES-128 CBC的OID。
+
+第3.4.3.2节：将SHA-1的micalg参数替换为sha-1。
+
+第4节：更新对CERT v3.2的引用。
+
+第4.1节：更新RSA和DSA密钥长度的讨论。将最后四句话移至安全考虑部分。更新关于安全性随机性要求的引用。
+
+第5节：添加IANA注册模板，将媒体类型注册表指向本文件，而非RFC 2311。
+
+第6节：更新安全考虑部分。
+
+第7节：将参考文献从附录B移至本节，更新参考文献，新增关于SMIMEv2、SMIMEv3和SMIMEv3.1的非规范性参考。
+
+附录B：新增附录B，将S/MIME v2列入历史状态。
+
+2. CMS选项
+
+CMS支持多种内容、属性和算法。本节提出若干支持要求和建议，以实现所有S/MIME实现之间的基本互操作性。[CMSALG]和[CMS-SHA2]提供关于加密算法使用的详细信息。[ESS]提供关于附加属性使用的补充细节。
+
+2.1. 摘要算法标识符
+
+发送和接收代理必须支持SHA-256 [CMS-SHA2]，并应支持SHA-1 [CMSALG]。接收代理应支持MD5 [CMSALG]，以实现与MD5摘要的S/MIME v2 SignedData对象的向后兼容。
+
+2.2. 签名算法标识符
+
+接收代理：
+
+- 必须支持RSA配合SHA-256。
+
+- 应支持DSS配合SHA-256。
+
+- 应支持RSASSA-PSS配合SHA-256。
+
+- 可支持RSA配合SHA-1。
+
+- 可支持DSS配合SHA-1。
+
+- 可支持RSA配合MD5。
+
+发送代理：
+
+- 必须支持RSA配合SHA-256。
+
+- 应支持DSS配合SHA-256。
+
+- 应支持RSASSA-PSS配合SHA-256。
+
+- 可支持RSA或DSS配合SHA-1。
+
+- 可支持RSA配合MD5。
+
+关于密钥长度和算法的详细信息，请参见第4.1节。
+
+注意，S/MIME v3.1客户端支持验证id-dsa-with-sha1和rsaEncryption，但可能不支持sha256withRSAEncryption。S/MIME v3客户端可能仅实现使用id-dsa-with-sha1的签名或签名验证，也可能在该字段中使用id-dsa作为算法标识符。接收端应将id-dsa视为等同于id-dsa-with-sha1，而发送端必须在使用该算法时采用id-dsa-with-sha1。此外，S/MIME v2客户端仅需支持使用rsaEncryption算法配合SHA-1或MD5的数字签名验证，可能不支持id-dsa-with-sha1或id-dsa。
+
+2.3. 密钥加密算法标识符
+
+接收和发送代理：
+
+- 必须支持[CMSALG]中定义的RSA加密。
+
+- 应支持[RSAOAEP]中定义的RSAES-OAEP。
+
+- 可支持[CMSALG]和[SP800-57]中定义的DH临时静态模式。
+
+当使用DH临时静态时，还会指定密钥封装算法，密钥封装和内容加密算法的底层加密函数（[CMSALG]和[CMSAES]）及其密钥长度必须一致（例如，AES-128密钥封装算法配合AES-128内容加密算法）。由于AES-128 CBC是强制实现的内容加密算法，使用DH临时静态时也必须支持AES-128密钥封装算法。
+
+注意，S/MIME v3.1客户端可能仅实现RSA算法的密钥加密和解密。S/MIME v3客户端可能仅实现Diffie-Hellman算法的密钥加密和解密。S/MIME v2客户端仅能使用rsaEncryption算法解密内容加密密钥。
+
+2.4. 通用语法
+
+CMS支持多种内容类型，目前用于S/MIME的主要有Data、SignedData、EnvelopedData和CompressedData。
+
+2.4.1. Data内容类型
+
+发送代理必须使用id-data内容类型标识“内部”MIME消息内容。例如，签署MIME数据时，CMS SignedData的encapContentInfo的eContentType必须包含id-data对象标识，媒体类型必须存储在SignedData的encapContentInfo的eContent OCTET STRING中（除非使用multipart/signed，此时eContent为空，详见第3.4.3节）。加密MIME数据时，CMS EnvelopedData的encryptedContentInfo的contentType也必须包含id-data对象标识，且加密的MIME内容存储在encryptedContent的OCTET STRING中。
+
+2.4.2. SignedData内容类型
+
+发送代理必须使用SignedData内容类型对消息签名，或在无签名信息的极端情况下传递证书。签名提供认证、消息完整性和不可否认性。
+
+2.4.3. EnvelopedData内容类型
+
+此内容类型用于实现消息的数据机密性。发送者需要为每个预期接收者拥有对应的公钥，以使用此服务。
+
+2.4.4. CompressedData内容类型
+
+此内容类型用于对消息进行数据压缩。它不提供认证、完整性、不可否认性或数据机密性，仅用于减小消息体积。
+
+详见第3.6节，关于与其他CMS类型结合使用的指导。
+
+2.5. 属性和SignerInfo类型
+
+SignerInfo类型允许在签名中包含无符号和有符号属性。
+
+接收代理必须能处理每个列出的有符号属性的零个或一个实例。发送代理应在每个S/MIME消息中生成以下每个有符号属性的一个实例：
+
+- 签名时间（第2.5.1节）
+
+- SMIME能力（第2.5.2节）
+
+- 加密密钥偏好（第2.5.3节）
+
+- 消息摘要（第11.2节 [CMS]）
+
+- 内容类型（第11.1节 [CMS]）
+
+此外，接收代理应能处理零或一个的signingCertificate和signingCertificateV2属性，这些定义在RFC 2634第5节和RFC 5035第3节中。
+
+发送代理应在每个SignerInfo结构中生成一个signingCertificate或signingCertificateV2属性。
+
+未来可能会定义更多的属性和参数。接收代理应能优雅地处理未识别的属性或参数。
+
+交互式发送代理如果包含未列出的签名属性，应将这些属性显示给用户，以确保用户知晓所有签名数据。
+
+2.5.1. 签名时间属性
+
+签名时间属性用于传达消息的签署时间。签署时间通常由消息发起者创建，其可信度取决于发起者。
+
+发送代理必须用UTCTime编码2049年前的签名时间；2050年及以后必须用GeneralizedTime编码。使用UTCTime时，年份字段（YY）应按以下规则解释：
+
+- YY ≥ 50，年份为19YY。
+
+- YY < 50，年份为20YY。
+
+接收代理应能处理用UTCTime或GeneralizedTime编码的签名时间属性。
+
+2.5.2. SMIME能力属性
+
+SMIMECapabilities属性包括签名算法（如“sha256WithRSAEncryption”）、对称算法（如“AES-128 CBC”）和密钥封装算法（如“rsaEncryption”）。还支持指示其他可选功能的标识符，如二进制编码和压缩。设计时考虑到未来扩展，允许添加其他能力和偏好（如证书支持），而不会影响现有客户端。
+
+如果存在，SMIMECapabilities属性必须是SignedAttribute，不能是UnsignedAttribute。CMS定义SignedAttributes为Attribute的集合（SET OF Attribute）。在签名者信息中，SignedAttributes不得包含多个SMIMECapabilities实例。Attribute的ASN.1语法定义为包含attrValues的SET OF AttributeValue。SMIMECapabilities属性必须只包含一个AttributeValue实例，不能没有或多于一个。
+
+SMIMECapabilities属性的语义是列出客户端支持的部分能力。客户端不必列出所有支持的能力，也不必列出全部能力以避免列表过长。对象标识符（OIDs）按偏好顺序列出，但应按类别（签名算法、对称算法、密钥封装等）逻辑分隔。结构设计便于简单查表和二进制比较，例如AES-128 CBC的DER编码必须在所有实现中一致。为确保编码一致，记录算法的文档应明确正确的字节序列。
+
+每个算法的OID应与实际算法对应，除非用法模糊（如rsaEncryption既可指签名算法也可指密钥封装算法）。若OID模糊，需由SMIMECapabilities注册维护者裁定使用类型，并为另一用途分配新OID。
+
+注册的SMIMECapabilities列表定义了参数（如密钥长度），没有差异参数的OID参数应省略，且不得编码为空（NULL）。未来可能定义更多属性值。接收端应能优雅处理未知值。
+
+第2.7.1节介绍了能力缓存策略。
+
+2.5.3. 加密密钥偏好属性
+
+加密密钥偏好属性允许签名者明确描述其首选的加密密钥证书。这旨在改善支持不同密钥用于加密和签名的客户端的互操作性。该属性传达给查看者，哪个证书适合用来加密会话密钥，以便未来的加密消息。
+
+如果存在，SMIMEEncryptionKeyPreference属性必须是SignedAttribute，不能是UnsignedAttribute。CMS定义SignedAttributes为Attribute的集合，签名者信息中的SignedAttributes不得包含多个SMIMEEncryptionKeyPreference实例。Attribute的ASN.1语法定义为包含attrValues的SET OF AttributeValue。该属性必须只包含一个AttributeValue实例，不能没有或多于一个。
+
+发送代理应在签名消息中包含的证书集合中加入被引用的证书（如果使用了该属性）。如果该证书之前已提供给接收代理，则可以省略。发送代理应在常用或首选的加密证书不同于用于签名的证书时，使用此属性。
+
+接收代理应在消息签名有效且签名时间大于当前存储值时，存储偏好数据。（与SMIMECapabilities类似，应检查时钟偏差，偏差过大时不使用相关数据。）接收代理应尽可能尊重发件人的加密密钥偏好属性，但这仅为偏好，接收代理可以使用任何有效的证书来回复发件人。
+
+第2.7.1节解释了缓存偏好数据的策略。
+
+2.5.3.1. 选择接收者密钥管理证书
+
+为了确定在向特定接收者发送未来的CMS封装数据（EnvelopedData）消息时应使用的密钥管理证书，应遵循以下步骤：
+
+- 如果在从目标接收者收到的SignedData对象中找到SMIMEEncryptionKeyPreference属性，则该属性标识应作为该接收者X.509密钥管理证书的证书。
+
+- 如果未在从目标接收者收到的SignedData对象中找到SMIMEEncryptionKeyPreference属性，则应在X.509证书集中搜索具有与可用于密钥管理的签名者相同主题名的X.509证书。
+
+- 或者采用其他方法确定用户的密钥管理密钥。如果未找到X.509密钥管理证书，则无法用签名者进行加密。如果找到多个X.509密钥管理证书，S/MIME代理可以任意选择其中之一。
+
+Ramsdell & Turner            标准轨迹                   [第15页]
+
+RFC 5751            S/MIME 3.2消息规范        2010年1月
+
+2.6.  签名者标识符（SignerIdentifier）类型
+
+S/MIME v3.2实现必须支持issuerAndSerialNumber和subjectKeyIdentifier两种方式。使用subjectKeyIdentifier的消息不能被S/MIME v2客户端读取。
+
+需要理解的是，一些证书使用的subjectKeyIdentifier值可能不适合唯一标识证书。实现必须准备好应对多个不同实体的证书可能具有相同的subjectKeyIdentifier值的情况，并在签名验证过程中尝试每个匹配的证书，直到验证成功或确认错误。
+
+2.7.  内容加密算法标识符（ContentEncryptionAlgorithmIdentifier）
+
+发送和接收代理应支持：
+
+- 支持AES-128 CBC [CMSAES]的加密和解密。
+
+- 应+支持AES-192 CBC和AES-256 CBC [CMSAES]的加密和解密。
+
+- 应-支持DES EDE3 CBC（以下简称“3DES”）[CMSALG]的加密和解密。
+
+2.7.1.  决定使用哪种加密方法
+
+当发送代理创建加密消息时，必须决定使用哪种类型的加密。决策过程包括利用从接收者收到的能力列表中的信息，以及私下协议、用户偏好、法律限制等带外信息。
+
+第2.5.2节定义了发送代理可以选择性地在其偏好顺序中宣布其解密能力的方法。应采用以下处理和记忆入站签名消息中加密能力属性的方法。
+
+- 如果接收代理尚未为发送者的公钥创建能力列表，则在验证签名和检查时间戳后，应创建一个新列表，至少包含签名时间和对称能力。
+
+- 如果已存在此类列表，接收代理应验证入站消息的签名时间是否大于存储的签名时间，且签名有效。如果符合，应更新签名时间和能力列表。不接受签名时间远在未来（即偏差大于合理时钟偏差）或签名验证失败的消息中的能力列表。
+
+能力列表应存储以备将来创建消息时使用。
+
+在发送消息前，发送代理必须决定是否愿意对特定数据使用弱加密。如果决定不能接受弱加密，则不得使用弱算法。使用或不使用弱加密的决定优先于本节中关于加密算法的其他决策。
+
+第2.7.1.1至2.7.1.2节描述了发送代理在决定应用哪种加密类型时应遵循的规则。这些规则是有序的，发送代理应按顺序做出决定。
+
+2.7.1.1. 规则1：已知能力
+
+如果发送代理已从接收者处获得了即将加密的消息的能力集，则应使用该信息，选择列表中第一个（即接收者最偏好的）且发送代理知道如何加密的能力。如果发送代理合理预期接收者能解密该消息，应使用列表中的能力。
+
+2.7.1.2. 规则2：未知能力，未知S/MIME版本
+
+如果满足以下两个条件：
+
+- 发送代理不知道接收者的加密能力，
+
+- 也不知道接收者的S/MIME版本，
+
+则应使用AES-128，因为它是更强的算法，也是S/MIME v3.2的要求。如果不选择AES-128，应使用3DES。
+
+2.7.2. 选择弱加密
+
+许多使用40位密钥的算法被认为是弱加密。由人为控制的发送代理应允许人为决定在发送数据前是否使用弱加密算法，并可能允许使用更强的加密方法，如3DES或AES。
+
+2.7.3. 多接收者
+
+如果发送代理为一组接收者构建加密消息，而部分接收者的加密能力不重叠，则必须发送多条消息。请注意，如果发送代理选择用强算法加密一条消息，又用弱算法加密同一消息，监听通信渠道的人可以通过解密弱加密的消息获知强加密消息的内容。
+
+3.  创建S/MIME消息
+
+本节描述S/MIME消息的格式及其创建方法。S/MIME消息由MIME主体和CMS内容类型组成，使用多种媒体类型和CMS内容类型。待保护的数据始终是规范化的MIME实体。MIME实体及其他数据（如证书和算法标识符）交由CMS处理设施生成CMS对象，最后将CMS对象封装在MIME中。增强安全服务（[ESS]）文档详细说明了嵌套、加密的S/MIME消息的格式。ESS还描述了如何用multipart/signed和application/pkcs7-mime格式化三重封装的S/MIME消息。
+
+S/MIME提供一种封装数据的格式、几种签名数据的格式，以及几种签名和封装结合的格式。为了适应不同环境（尤其是签名消息），需要多种格式。选择这些格式的标准也在本节中描述。
+
+读者应理解[MIME-SPEC]和[MIME-SECURE]中描述的MIME内容。
+
+3.1.  准备签名、封装或压缩的MIME实体
+
+S/MIME用于保护MIME实体。MIME实体可以是子部分、消息的子部分，或整个消息（包括所有子部分）。完整消息的MIME实体只包括MIME消息头和MIME正文，不包括RFC-822头。注意，S/MIME也可用于保护应用于非互联网邮件的MIME实体。如需保护RFC-822头部，后续将说明使用message/rfc822媒体类型。
+
+被保护的MIME实体（本节所述）可以视为“内部”MIME实体，即可能是更大MIME消息中的“最内层”对象。将“外部”MIME实体转换为CMS内容类型的过程在第3.2节、第3.4节及其他部分描述。
+
+准备MIME实体的步骤详见[MIME-SPEC]。本节采用相同步骤，签名时附加一些限制。为确保签名的完整性，建议在封装或签名封装消息上执行这些额外步骤，以便消息可在任何环境中转发而不需修改。
+
+这些步骤为描述性，非强制性。实现者可采用任何符合要求的流程，只要最终结果一致。
+
+步骤1：根据本地习惯准备MIME实体。
+
+步骤2：将MIME实体的叶子部分转换为规范形式。
+
+步骤3：对MIME实体的叶子部分应用适当的传输编码。
+
+当接收S/MIME消息时，将对消息的安全服务进行处理，得到MIME实体。该实体通常传递给支持MIME的用户代理，进行进一步解码并呈现给用户或接收应用。
+
+为了保护外部非内容相关的消息头字段（如“Subject”、“To”、“From”、“Cc”），发件客户端可以用message/rfc822封装完整的MIME消息，以应用S/MIME安全服务于这些头字段。由接收端决定如何显示“内部”头和未受保护的“外部”头。
+
+当接收S/MIME消息时，如果顶层受保护的MIME实体的Content-Type为message/rfc822，则可假定其意图是保护头部信息。此实体应作为顶层消息呈现，考虑到前述的头部合并问题。
+
+3.1.1. 规范化（Canonicalization）
+
+每个MIME实体必须转换为一种唯一且无歧义的规范形式，以确保在签名创建环境和验证环境中都能一致表示。封装、压缩和签名都必须对MIME实体进行规范化。
+
+关于规范化的具体细节取决于实体的实际媒体类型和子类型，这里未作详细描述。相应的媒体类型标准应予以查阅。例如，文本类型（text/plain）的规范化方式不同于音频类型（audio/basic）。除文本类型外，大多数类型只有一种表示形式，无论计算平台或环境如何，都可以视为其规范化表示。一般而言，规范化由发送代理的非安全部分完成，而非由S/MIME实现部分完成。
+
+最常见且最重要的规范化是针对文本的，因为不同环境中文本的表现形式常常不同。类型为“text”的MIME实体必须对其换行符和字符集进行规范化。换行符必须为“<CR><LF>”，字符集应为已注册的字符集[CHARSETS]。具体的规范化细节在[MIME-SPEC]中规定。
+
+注意，某些字符集如ISO-2022对相同字符有多种表示方式。在准备此类文本进行签名时，必须使用字符集规定的规范表示。
+
+Ramsdell & Turner            标准轨迹                   [第20页]
+
+RFC 5751            S/MIME 3.2消息规范        2010年1月
+
+3.1.2 转移编码
+
+在生成以下任何安全MIME实体时，除非使用multipart/signed格式进行签名，否则无需进行转移编码。S/MIME实现必须能够处理二进制MIME对象。如果没有Content-Transfer-Encoding头字段，默认转移编码为7BIT。
+
+然而，S/MIME实现应当对所有受保护的MIME实体采用第3.1.3节所述的转移编码。仅对7位MIME实体进行保护的原因在于，即使是未暴露在传输中的封装数据，也允许在任何环境中处理而无需更改。例如，可信的网关可能会移除消息的信封，但不移除签名，然后将签名的消息转发给最终接收者，以便他们可以直接验证签名。如果站点内部的传输不支持8位（如在单一邮件网关的广域网中），除非原始MIME实体仅为7位数据，否则验证签名将无法进行。
+
+“知道”所有预期接收者都能处理内部（非最外层）二进制MIME对象的S/MIME实现，应使用二进制编码，而非7位安全的转移编码（如base64），以避免不必要的消息膨胀。实现可以通过解释SMIMECapabilities中的id-cap-preferBinaryInside属性、事先协商或其他方式，判断接收方是否支持处理内部二进制MIME实体。
+
+如果一个或多个预期接收者无法处理内部二进制MIME对象，或对任何预期接收者的能力未知，S/MIME实现应对所有受保护的MIME实体采用第3.1.3节所述的转移编码。
+
+3.1.3 使用multipart/signed进行签名的转移编码
+
+如果multipart/signed实体需要通过标准互联网SMTP或其他受限于7位文本的传输方式传输，必须应用转移编码，使其表现为7位文本。已经是7位数据的MIME实体无需转移编码。对于8位文本和二进制数据，可以使用quoted-printable或base64转移编码。
+
+采用7位的主要原因在于互联网邮件传输基础设施无法保证8位或二进制数据的传输。尽管许多传输环节已支持8位甚至二进制数据，但有时无法确认传输路径是否支持8位。如果带有8位数据的邮件遇到不能传输8位或二进制数据的消息传输代理，代理有三种不可接受的选择：
+
+- 改变转移编码（会使签名失效）；
+- 传输数据（可能导致第8位被破坏，签名失效）；
+- 返回发件人。
+
+[MIME-SECURE]禁止代理更改multipart/signed消息第一部分的转移编码。如果遇到包含8位或二进制数据的multipart/signed消息，且代理不能传输此类数据，则应返回不可达。
+
+3.1.4 示例规范化MIME实体
+
+此示例展示了带有完整转移编码的multipart/mixed消息。消息包含文本部分和附件。示例中的文本包含非US-ASCII字符，因此需要转移编码。每行结尾为<CR><LF>，MIME头、文本和转移编码部分的行尾都必须为<CR><LF>。
+
+注意：此示例不是S/MIME消息。
+
+```
+Content-Type: multipart/mixed; boundary=bar
+
+--bar
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+=A1Hola Michael!
+
+你喜欢新的S/MIME规范吗？
+
+通常建议对以“From= ”开头的行进行编码，因为一些邮件传输代理会插入“>”符号，从而使签名无效。
+
+此外，在某些情况下，可能希望对行尾的空白字符进行编码，以确保在通过修改此类空白的网关（如BITNET）时，消息签名不被作废。
+
+--bar
+Content-Type: image/jpeg
+Content-Transfer-Encoding: base64
+
+iQCVAwUBMJrRF2N9oWBghPDJAQE9UQQAtl7LuRVndBjrk4EqYBIb3h5QXIX/LC//
+jJV5bNvkZIGPIcEmI5iFd9boEgvpirHtIREEqLQRkYNoBActFBZmh9GC3C041WGq
+uMbrbxc+nIs1TIKlA08rVi9ig/2Yh7LFrK5Ein57U/W72vgSxLhe/zhdfolT9Brn
+HOxEa44b+EI=
+
+--bar--
+```
+
+3.2 应用/pkcs7-mime媒体类型
+
+application/pkcs7-mime用于携带CMS内容类型，包括EnvelopedData、SignedData和CompressedData。具体构造方式在后续章节中描述。本节介绍该媒体类型的基本特性。
+
+携带的CMS对象总是包含一个MIME实体（如果eContentType为id-data，则按第3.1节描述准备）。当eContentType为其他值时，也可以携带其他内容。详见[ESS]中的签收回执示例。
+
+由于CMS内容类型为二进制数据，通常采用base64转移编码，尤其是在SMTP传输中。所用的转移编码取决于传输方式，而非媒体类型的特性。
+
+注意，此处讨论的是CMS对象或“外部”MIME实体的转移编码，与第3.1节描述的“内部”对象（由CMS保护的MIME实体）完全不同。
+
+鉴于存在多种application/pkcs7-mime对象类型，发送代理应尽可能帮助接收代理了解对象内容，而不强制其解码ASN.1结构。所有application/pkcs7-mime对象的Content-Type头应包含可选的“smime-type”参数，具体如下。
+
+3.2.1 名称和文件名参数
+
+对于application/pkcs7-mime，发送代理应发出“name”参数以兼容旧系统。还应发出带有“filename”参数的Content-Disposition字段[CONTDISP]。如果发出上述参数，参数值应为带有适当扩展名的文件名：
+
+| 媒体类型 | 文件扩展名 |
+| --- | --- |
+| application/pkcs7-mime（SignedData, EnvelopedData） | .p7m |
+| application/pkcs7-mime（退化的SignedData（证书管理消息）） | .p7c |
+| application/pkcs7-mime（CompressedData） | .p7z |
+| application/pkcs7-signature（SignedData） | .p7s |
+
+此外，文件名应限制为八个字符，后跟三字母扩展名。八字符的基础名可以是任何不同的名称；建议使用“smime”作为基础名，以表明该MIME实体与S/MIME相关。
+
+包含文件名有两个作用：一是方便将S/MIME对象作为文件存储；二是可以在网关上传递类型信息。当一个application/pkcs7-mime类型的MIME实体到达对S/MIME无特殊认知的网关时，默认会将其媒体类型设为application/octet-stream，作为普通附件处理，从而丢失类型信息。然而，附件的建议文件名通常会被传递，接收系统可以据此判断合适的应用程序（如独立的S/MIME处理程序）来处理附件。请注意，此机制仅作为某些环境中实现的便利措施。正式的S/MIME实现必须使用正确的媒体类型，不能依赖文件扩展名。
+
+3.2.2 smime-type参数
+
+application/pkcs7-mime的内容类型定义了可选的“smime-type”参数。该参数旨在传达所应用的安全措施（签名或封装）以及内容的具体类型。以下定义了几种smime-type。
+
+| 名称 | CMS类型 | 内部内容 |
+| --- | --- | --- |
+| enveloped-data | EnvelopedData | id-data |
+| signed-data | SignedData | id-data |
+| certs-only | SignedData | 无内容 |
+| compressed-data | CompressedData | id-data |
+
+为了确保未来规范的一致性，分配新smime-type参数时应遵循以下指南：
+
+1. 如果内容既可签名又可加密，应为smime-type分配“signed-*”和“enveloped-*”两个值。如果只支持其中一种操作，则可省略。例如，“certs-only”只能签名，因此省略“signed-”。
+
+2. 应为内容OID分配一个通用字符串。对于内部内容为MIME的情况，使用“data”作为id-data内容OID。
+
+3. 如果没有分配通用字符串，建议使用“OID.<oid>”格式的通用字符串（例如，“OID.2.16.840.1.101.3.4.1.2”代表AES-128 CBC）。
+
+此字段明确旨在为邮件客户端提供提示，指示消息是“签名”还是“封装”，而无需深入CMS负载。
+
+3.3 创建仅封装消息
+
+本节描述不签名的封装MIME实体的格式。注意，发送封装但未签名的消息不提供数据完整性保障。虽然可以篡改密文使消息仍然有效，但其含义可能被篡改。
+
+步骤1：根据第3.1节准备待封装的MIME实体。
+
+步骤2：将MIME实体及其他必要数据处理成类型为EnvelopedData的CMS对象。除了为每个接收者加密内容加密密钥的副本外，还应为发件人加密内容加密密钥的副本，并包含在EnvelopedData中（参见[CMS]第6节）。
+
+步骤3：将EnvelopedData对象封装在CMS ContentInfo对象中。
+
+步骤4：将ContentInfo对象插入到application/pkcs7-mime MIME实体中。
+
+封装-only消息的smime-type参数为“enveloped-data”。此类消息的文件扩展名为“.p7m”。
+
+示例消息如下：
+
+```
+Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=smime.p7m
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7m
+
+rfvbnj756tbBghyHhHUujhJhjH77n8HHGT9HG4VQpfyF467GhIGfHfYT6
+7n8HHGghyHhHUujhJh4VQpfyF467GhIGfHfYGTrfvbnjT6jH7756tbB9H
+f8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
+0GhIGfHfQbnj756YT64V
+```
+
+3.4 创建仅签名消息
+
+S/MIME定义了两种签名消息格式：
+
+- 使用SignedData的application/pkcs7-mime。
+
+- multipart/signed。
+
+一般而言，推荐使用multipart/signed格式进行发送，接收方必须支持两者。
+
+3.4.1 选择签名-only消息的格式
+
+没有严格的规则规定何时采用哪种签名格式。选择依据取决于所有接收者的能力，以及支持S/MIME验证签名的接收者与不支持的接收者之间的相对重要性。
+
+使用multipart/signed格式签名的消息，接收方无论是否拥有S/MIME软件，都可以查看。它们也可以被使用MIME原生用户代理的用户或通过网关转换的消息进行查看。在此，“查看”意味着能够处理该消息，基本上就像它不是签名消息一样，包括消息可能具有的任何其他MIME结构。
+
+使用SignedData格式签名的消息，除非接收方具备S/MIME功能，否则无法查看。然而，SignedData格式可以保护消息内容不被善意的中间代理篡改。这些代理可能会进行换行或内容传输编码的更改，从而破坏签名。
+
+3.4.2. 使用application/pkcs7-mime和SignedData进行签名
+
+这种签名格式使用application/pkcs7-mime媒体类型。创建此格式的步骤如下：
+
+步骤1：根据第3.1节准备MIME实体。
+
+步骤2：将MIME实体和其他必要数据处理成类型为SignedData的CMS对象。
+
+步骤3：将SignedData对象封装在CMS ContentInfo对象中。
+
+步骤4：将ContentInfo对象插入到一个application/pkcs7-mime的MIME实体中。
+
+使用application/pkcs7-mime和SignedData的消息的smime-type参数为“signed-data”。此类消息的文件扩展名为“.p7m”。
+
+示例消息如下：
+
+```
+Content-Type: application/pkcs7-mime; smime-type=signed-data; name=smime.p7m
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7m
+
+567GhIGfHfYT6ghyHhHUujpfyF4f8HHGTrfvhJhjH776tbB9HG4VQbnj777n8HHGT9HG4VQpfyF467GhIGfHfYT6rfvbnj756tbBghyHhHUujhJhjHHUujhJh4VQpfyF467GhIGfHfYGTrfvbnjT6jH7756tbB9H7n8HHGghyHh6YT64V0GhIGfHfQbnj75
+```
+
+3.4.3. 使用multipart/signed格式进行签名
+
+这是一个明文签名格式。即使没有任何S/MIME或CMS处理功能的接收方，也能查看消息。它采用[MIME-SECURE]中描述的multipart/signed媒体类型。该类型包含两个部分：第一部分是被签名的MIME实体；第二部分是“分离签名”的CMS SignedData对象，其中encapContentInfo的eContent字段不存在。
+
+3.4.3.1. application/pkcs7-signature媒体类型
+
+此媒体类型始终包含一个CMS ContentInfo，内含一个类型为SignedData的CMS对象。SignedData的encapContentInfo的eContent字段必须不存在。signerInfos字段包含对MIME实体的签名。
+
+仅签名消息使用application/pkcs7-signature的文件扩展名为“.p7s”。
+
+3.4.3.2. 创建multipart/signed消息
+
+步骤1：根据第3.1节准备待签名的MIME实体，特别注意明文签名。
+
+步骤2：将MIME实体提交给CMS处理，以获得一个类型为SignedData的对象，其中的encapContentInfo的eContent字段必须不存在。
+
+步骤3：将MIME实体插入到multipart/signed消息的第一部分，除了第3.1节描述的处理外不做其他处理。
+
+步骤4：对“分离签名”的CMS SignedData对象应用传输编码，然后插入到类型为application/pkcs7-signature的MIME实体中。
+
+步骤5：将application/pkcs7-signature的MIME实体插入到multipart/signed实体的第二部分。
+
+multipart/signed的Content-Type必须包含两个必需参数：protocol和micalg。
+
+protocol参数必须为“application/pkcs7-signature”。注意，协议参数的引号是必需的，因为MIME要求参数值中的“/”字符必须用引号括起来。
+
+micalg参数允许在验证签名时进行一次性处理。其值依赖于用于计算消息完整性检查的消息摘要算法。如果使用多种消息摘要算法，它们必须用逗号分隔，符合[MIME-SECURE]的规定。micalg参数的值应来自以下列表：
+
+| 算法     | 使用的值   |
+| -------- | ---------- |
+| MD5      | md5        |
+| SHA-1    | sha-1     |
+| SHA-224  | sha-224   |
+| SHA-256  | sha-256   |
+| SHA-384  | sha-384   |
+| SHA-512  | sha-512   |
+| 其他     | （在算法配置文件中单独定义，或“unknown”） |
+
+（历史备注：一些早期的S/MIME实现会发出并期望“rsa-md5”、“rsa-sha1”和“sha1”作为micalg参数值。）接收代理应能优雅地处理未识别的micalg参数值。未来此参数的名称将与IANA“Hash Function Textual Names”注册表保持一致。
+
+3.4.3.3. multipart/signed示例消息
+
+```
+Content-Type: multipart/signed;
+    protocol="application/pkcs7-signature";
+    micalg=sha1; boundary=boundary42
+
+--boundary42
+Content-Type: text/plain
+
+这是一个明文签名的消息。
+
+--boundary42
+Content-Type: application/pkcs7-signature; name=smime.p7s
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7s
+
+ghyHhHUujhJhjH77n8HHGTrfvbnj756tbB9HG4VQpfyF467GhIGfHfYT6
+4VQpfyF467GhIGfHfYT6jH77n8HHGghyHhHUujhJh756tbB9HGTrfvbnj
+n8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
+7GhIGfHfYT64VQbnj756
+
+--boundary42--
+```
+
+签名的内容（multipart/signed的第一部分）由以下字节组成：
+
+43 6f 6e 74 65 6e 74 2d 54 79 70 65 3a 20 74 65 78 74 2f 70 6c 61 69
+6e 0d 0a 0d 0a 54 68 69 73 20 69 73 20 61 20 63 6c 65 61 72 2d 73 69
+67 6e 65 64 20 6d 65 73 73 61 67 65 2e 0d 0a
+
+4. 创建仅压缩消息
+
+本节描述压缩MIME实体的格式。请注意，早于版本3.1的S/MIME未定义任何CompressedData的使用，也不会识别它。为了兼容性，建议使用能力指示接收CompressedData的能力的方法，详见[CMSCOMPR]。
+
+步骤1：根据第3.1节准备待压缩的MIME实体。
+
+步骤2：将MIME实体和其他必要数据处理成类型为CompressedData的CMS对象。
+
+步骤3：将CompressedData对象封装在CMS ContentInfo中。
+
+步骤4：将ContentInfo插入到application/pkcs7-mime的MIME实体中。
+
+压缩-only消息的smime-type参数为“compressed-data”。此类消息的文件扩展名为“.p7z”。
+
+示例消息如下：
+
+```
+Content-Type: application/pkcs7-mime; smime-type=compressed-data; name=smime.p7z
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=smime.p7z
+
+rfvbnj756tbBghyHhHUujhJhjH77n8HHGT9HG4VQpfyF467GhIGfHfYT6
+7n8HHGghyHhHUujhJh4VQpfyF467GhIGfHfYGTrfvbnjT6jH7756tbB9H
+f8HHGTrfvhJhjH776tbB9HG4VQbnj7567GhIGfHfYT6ghyHhHUujpfyF4
+0GhIGfHfQbnj756YT64V
+```
+
+4.6. 多重操作
+
+签名、加密和压缩的MIME格式可以嵌套。这是因为这些格式都是封装其他MIME实体的MIME实体。
+
+实现S/MIME的系统必须能够在合理的资源限制内接收和处理任意嵌套的S/MIME。
+
+可以以任何顺序应用签名、加密和压缩操作。由实现者和用户自行选择。先签名时，签名者会被安全地隐藏在封装中；先封装时，签名者会暴露，但可以在不移除封装的情况下验证签名。这在需要自动验证签名的环境中特别有用，因为验证签名不需要私钥材料。
+
+选择先签名还是先加密会带来安全上的不同后果。先加密后签名的消息，接收方可以验证加密块未被篡改，但无法判断签名者与未加密内容之间的关系。先签名后加密的消息，接收方可以确认签名的内容未被篡改，但可能存在攻击者篡改未认证部分的风险。
+
+使用压缩时应遵循以下指南：
+
+- 不建议对二进制编码的加密数据进行压缩，因为压缩效果有限。但对Base64编码的加密数据可能会有益。
+
+- 如果在签名时使用有损压缩算法，应先压缩后签名。
+
+3.7. 创建证书管理消息
+
+证书管理消息或MIME实体用于传输证书和/或证书吊销列表（CRL），例如在响应注册请求时。
+
+步骤1：将证书和/或CRL提供给生成CMS对象（类型为SignedData）的CMS处理过程。此SignedData的encapContentInfo的eContent字段必须不存在，signerInfos字段必须为空。
+
+步骤2：将SignedData对象封装在CMS ContentInfo中。
+
+步骤3：将ContentInfo封装在application/pkcs7-mime的MIME实体中。
+
+证书管理消息的smime-type参数为“certs-only”。此类消息的文件扩展名为“.p7c”。
+
+3.8. 注册请求
+
+签名消息的发送代理必须拥有签名证书，以便接收代理验证签名。获取证书的方法多种多样，如通过与证书授权机构的交换、硬件令牌或软盘等。
+
+早期的S/MIME v2 [SMIMEv2]定义了通过application/pkcs10体部向证书授权机构“注册”公钥的方法。从那时起，IETF PKIX工作组开发了其他请求证书的方法，但S/MIME v3.2并不强制采用特定的证书请求机制。
+
+3.9. 识别S/MIME消息
+
+由于S/MIME考虑了在非MIME环境中的互操作性，采用了多种机制携带类型信息，因此识别S/MIME消息可能较为复杂。下表列出了判断消息是否为S/MIME消息的标准。只要符合下列任一条件，即认为该消息是S/MIME消息。
+
+表中所列的文件后缀来自Content-Type头字段中的“name”参数或Content-Disposition头字段中的“filename”参数。这些参数指示的文件后缀未在参数部分列出。
+
+- 媒体类型：application/pkcs7-mime
+  参数：任何
+  文件后缀：任何
+
+- 媒体类型：multipart/signed
+  参数：protocol="application/pkcs7-signature"
+  文件后缀：任何
+
+- 媒体类型：application/octet-stream
+  参数：任何
+  文件后缀：p7m、p7s、p7c、p7z
+
+4. 证书处理
+
+接收方必须提供某种证书检索机制，以便获取收件人的数字信封证书。本规范未涵盖S/MIME代理如何处理证书，只说明验证或拒绝证书后的操作。关于S/MIME证书的问题，详见[CERT32]。
+
+在初始部署中，用户代理至少应能自动向目标收件人发送请求其证书的签名返回消息。收发代理还应提供机制，允许用户“存储和保护”通信者的证书，以保证其后续可用。
+
+4.1. 密钥对生成
+
+所有生成的密钥对必须由良好的非确定性随机源生成[RANDOM]，私钥必须受到安全保护。
+
+S/MIME用户代理不得为RSA或DSA签名算法生成少于512位的非对称密钥。
+
+- 512位RSA（SHA-1）：参考[CMSALG]和[FIPS186-2]（无变更通知1）
+- 512位RSA（SHA-256）：参考[CMS-SHA2]和[FIPS186-2]（无变更通知1）
+- 1024至2048位RSA（SHA-256）：参考[CMS-SHA2]和[FIPS186-2]（有变更通知1）
+
+第一个参考提供签名算法的对象标识符，第二个提供签名算法定义。
+
+- 512位DSA（SHA-1）：参考[CMSALG]和[FIPS186-2]（无变更通知1）
+- 512位DSA（SHA-256）：参考[CMS-SHA2]和[FIPS186-2]（无变更通知1）
+- 1024位DSA（SHA-1）：参考[CMSALG]和[FIPS186-2]（有变更通知1）
+- 1024位及以上DSA（SHA-256）：参考[CMS-SHA2]和[FIPS186-3]
+
+第一个提供签名算法的对象标识符，第二个提供定义。
+
+- RSASSA-PSS（SHA-256）：参考[RSAPSS]
+- 1024位DH：参考[CMSALG]
+- 1024位及更大DH：参考[SP800-56A]，应使用来自X9.42的密钥派生函数（KDF），由[CMSALG]定义
+- RSAES-OAEP：参考[RSAOAEP]
+
+4.2. 签名生成
+
+以下是S/MIME代理在生成RSA、RSASSA-PSS和DSA签名时的基本要求：
+
+以下是英文内容的中文翻译：
+
+```
+           密钥长度 <= 1023 ：建议不要使用（参见安全注意事项）
+   1024 <= 密钥长度 <= 2048 ：建议使用（参见安全注意事项）
+   2048 <  密钥长度         ：可选（参见安全注意事项）
+
+
+
+
+
+
+拉姆斯代尔 & 特纳            标准轨道                   [第33页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+4.3.  签名验证
+
+   以下是S/MIME接收代理在验证RSA、RSASSA-PSS和DSA签名时的要求：
+
+           密钥长度 <= 1023 ：可选（参见安全考虑）
+   1024 <= 密钥长度 <= 2048 ：必须（参见安全考虑）
+   2048 <  密钥长度         ：可选（参见安全考虑）
+
+4.4.  加密
+
+   以下是S/MIME代理在使用RSA、RSA-OAEP和DH算法建立内容加密密钥时的要求：
+
+           密钥长度 <= 1023 ：建议不要使用（参见安全考虑）
+   1024 <= 密钥长度 <= 2048 ：建议使用（参见安全考虑）
+   2048 <  密钥长度         ：可选（参见安全考虑）
+
+4.5.  解密
+
+   以下是S/MIME代理在使用RSA、RSAES-OAEP和DH算法建立内容解密密钥时的要求：
+
+           密钥长度 <= 1023 ：可选（参见安全考虑）
+   1024 <= 密钥长度 <= 2048 ：必须（参见安全考虑）
+   2048 <  密钥长度         ：可选（参见安全考虑）
+
+5.  IANA注意事项
+
+   以下信息更新了application/pkcs7-mime和application/pkcs7-signature的媒体类型注册，将其引用的文档由RFC 2311改为本文件。
+
+   注意，其他文档可以定义额外的S/MIME MIME媒体类型。
+
+5.1.  application/pkcs7-mime的媒体类型
+
+   类型名称：application
+
+   子类型名称：pkcs7-mime
+
+   必需参数：无
+
+
+
+
+
+
+拉姆斯代尔 & 特纳            标准轨道                   [第34页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+   可选参数：smime-type/signed-data
+                        smime-type/enveloped-data
+                        smime-type/compressed-data
+                        smime-type/certs-only
+                        name
+
+   编码考虑：参见本文第3节
+
+   安全考虑：参见本文第6节
+
+   互操作性考虑：参见本文第1-6节
+
+   已发布的规范：RFC 2311、RFC 2633及本文件
+
+   使用此媒体类型的应用：安全应用
+
+   其他信息：无
+
+   联系人及电子邮箱：S/MIME工作组主席 smime-chairs@tools.ietf.org
+
+   预期用途：普通
+
+   使用限制：无
+
+   作者：肖恩·特纳
+
+   变更控制：由IETF授权的S/MIME工作组管理
+
+5.2.  application/pkcs7-signature的媒体类型
+
+   类型名称：application
+
+   子类型名称：pkcs7-signature
+
+   必需参数：无
+
+   可选参数：无
+
+   编码考虑：参见本文第3节
+
+   安全考虑：参见本文第6节
+
+   互操作性考虑：参见本文第1-6节
+
+   已发布的规范：RFC 2311、RFC 2633及本文件
+
+   使用此媒体类型的应用：安全应用
+
+
+
+Ramsdell & Turner            标准轨道                   [第35页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+   其他信息：无
+
+   联系人及电子邮箱：S/MIME工作组主席 smime-chairs@tools.ietf.org
+
+   预期用途：普通
+
+   使用限制：无
+
+   作者：肖恩·特纳
+
+   变更控制：由IETF授权的S/MIME工作组管理
+
+6.  安全考虑
+
+   密码算法会随着时间被破解或减弱。
+   实现者和用户需要检查本文列出的密码算法是否仍能提供预期的安全级别。IETF不时会发布关于当前技术状态的文档。例如：
+
+      - RFC 3218 [MMA]中描述的百万消息攻击。
+
+      - RFC 2785 [DHSUB]中描述的Diffie-Hellman“小子群”攻击。
+
+      - RFC 4270 [HASH-ATTACK]中描述的对哈希算法的攻击。
+
+   本规范使用公钥密码技术。假设私钥受到保护，确保未被未授权方访问或篡改。
+
+   大多数人或软件难以估算一条消息内容的价值。此外，几乎不可能估算用特定大小密钥加密的消息内容的实际恢复成本。更难的是，无法判断如果接收者无法处理消息内容，解密失败的成本。因此，选择不同的密钥大小（或仅使用明文）对于大多数人或软件来说也是不可能的。然而，基于这些判断做出的决策随时都在发生，因此本规范提供了一个框架，用于在选择算法时利用这些估算。
+
+   本规范中2048位RSA非对称密钥的选择旨在提供至少100比特的安全性。支持的密钥大小应基于[STRENGTH]中的建议，似乎适合互联网环境。当然，也存在一些环境（如金融和医疗系统）可能会选择不同的密钥大小。出于这个原因，实现可以支持超出本规范推荐范围的密钥大小。
+
+   接收验证签名的代理和发送加密消息的代理在验证签名和加密消息时，应谨慎处理使用超出本规范要求的密钥大小的密码处理。攻击者可能会发送带有过大密钥的证书（例如超出本规范要求的密钥），以导致过度的密码处理，从而可能淹没处理单元。未先验证证书到信任锚的代理，建议配备某种密码资源管理系统以防止此类攻击。
+
+   使用弱密码学在S/MIME中几乎没有比纯文本传输更高的安全性。然而，S/MIME的其他特性（如支持AES和向通信方宣布更强密码能力）允许发送者创建使用强加密的消息。除非唯一的选择是完全不使用密码学，否则不建议使用弱密码学。
+
+   许多专家认为，小于1024位的RSA和DSA密钥在现代计算能力下已被认为是不安全的（因计算能力的提升），不应再用于保护消息。这类密钥之前被认为是安全的，因此之前接收的签名和加密邮件可能会使用弱密钥。希望支持旧版本S/MIME或处理旧消息的实现，应考虑较小密钥带来的安全风险（如伪造消息）与拒绝服务的成本之间的权衡。如果实现支持验证用少于1024位RSA和DSA密钥生成的数字签名，必须提醒用户。实现者应考虑为新接收的消息和存储的旧消息提供不同的警告。对于不适合向用户发出警告的服务器（如安全邮件列表服务器），应拒绝带有弱签名的消息。
+
+   实现者应注意，一个人可以拥有多个活跃的密钥对。例如，一个密钥对可以用于保密，另一个用于数字签名。
+
+   如果发送代理使用不同强度的密码学技术发送相同的消息，监听通信渠道的攻击者可能通过解密较弱的版本来推断出强加密消息的内容。换句话说，发送者不应使用比原始消息更弱的密码学技术来发送副本。
+
+   如果未同时使用认证，修改密文可能无法被检测到，例如在未用签名数据包裹或在其中嵌入签名数据的EnvelopedData中。
+
+   如果实现关心符合国家标准与技术研究院（NIST）关于密钥长度的建议，请参见[SP800-57]。
+
+   如果消息环境利用消息签名的事实来改变消息处理行为（例如运行规则或界面显示提示），而未先验证消息是否已签名或未了解签名状态，可能会导致消息处理错误。如果消息的签名验证状态是用来提供信息的，界面上的指示器可能需要定期检查签名验证代码。
+
+7.  参考文献
+
+7.1.  参考约定
+
+   [CMS] 指[RFC5652]。
+
+   [ESS] 指[RFC2634]和[RFC5035]。
+
+   [MIME] 指[RFC2045]、[RFC2046]、[RFC2047]、[RFC2049]、[RFC4288]和[RFC4289]。
+
+   [SMIMEv2] 指[RFC2311]、[RFC2312]、[RFC2313]、[RFC2314]和[RFC2315]。
+
+   [SMIMEv3] 指[RFC2630]、[RFC2631]、[RFC2632]、[RFC2633]、[RFC2634]和[RFC5035]。
+
+   [SMIMv3.1] 指[RFC2634]、[RFC3850]、[RFC3851]、[RFC3852]和[RFC5035]。
+
+7.2.  核心参考文献
+
+   [CERT32]      拉姆斯代尔，B. 和 S. 特纳，“安全/多用途互联网邮件扩展（S/MIME）第3.2版证书处理”，RFC 5750，2010年1月。
+
+   [CHARSETS]    IANA分配的字符集。详见 http://www.iana.org/assignments/character-sets。
+
+   [CMSAES]      施阿德，J.，“在加密消息语法（CMS）中使用高级加密标准（AES）加密算法”，RFC 3565，2003年7月。
+
+   [CMSALG]      豪斯利，R.，“加密消息语法（CMS）算法”，RFC 3370，2002年8月。
+
+   [CMSCOMPR]    古特曼，P.，“用于加密消息语法（CMS）的压缩数据内容类型”，RFC 3274，2002年6月。
+
+   [CMS-SHA2]    特纳，S.，“在加密消息语法中使用SHA2算法”，RFC 5754，2010年1月。
+
+   [CONTDISP]    特鲁斯特，R.、多纳，S. 和 摩尔，K.，编辑，“互联网消息中的内容显示信息：内容显示头字段”，RFC 2183，1997年8月。
+
+   [FIPS186-2]   美国国家标准与技术研究院（NIST），“数字签名标准（DSS）”，FIPS 186-2，2000年1月。[附变更通知1]
+
+   [FIPS186-3]   NIST，“数字签名标准（FIPS 186-3）”，2009年6月。
+
+   [MIME-SECURE] 加尔文，J.、墨菲，S.、克罗克，S. 和 弗里德，N.，“MIME的安全多部分：签名多部分和加密多部分”，RFC 1847，1995年10月。
+
+   [MUSTSHOULD]  布拉德纳，S.，“在RFC中用以指示需求级别的关键词”，BCP 14，RFC 2119，1997年3月。
+
+   [RANDOM]      伊斯特雷克，D.三世、席勒，J. 和 克罗克，S.，“安全的随机性要求”，BCP 106，RFC 4086，2005年6月。
+
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第39页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+   [RFC2045]     弗里德，N. 和 博伦斯坦，N.，“多用途互联网邮件扩展（MIME）第一部分：互联网消息体的格式”，RFC 2045，1996年11月。
+
+   [RFC2046]     弗里德，N. 和 博伦斯坦，N.，“多用途互联网邮件扩展（MIME）第二部分：媒体类型”，RFC 2046，1996年11月。
+
+   [RFC2047]     穆尔，K.，“MIME（多用途互联网邮件扩展）第三部分：非ASCII文本的消息头扩展”，RFC 2047，1996年11月。
+
+   [RFC2049]     弗里德，N. 和 博伦斯坦，N.，“多用途互联网邮件扩展（MIME）第五部分：符合性标准和示例”，RFC 2049，1996年11月。
+
+   [RFC2634]     霍夫曼，P.，“为S/MIME增强安全服务”，RFC 2634，1999年6月。
+
+   [RFC4288]     弗里德，N. 和 克莱辛，J.，“媒体类型规范及注册程序”，BCP 13，RFC 4288，2005年12月。
+
+   [RFC4289]     弗里德，N. 和 克莱辛，J.，“多用途互联网邮件扩展（MIME）第四部分：注册程序”，BCP 13，RFC 4289，2005年12月。
+
+   [RFC5035]     施阿德，J.，“增强安全服务（ESS）更新：添加CertID算法灵活性”，RFC 5035，2007年8月。
+
+   [RFC5652]     豪斯利，R.，“密码消息语法（CMS）”，RFC 5652，2009年9月。
+
+   [RSAOAEP]     豪斯利，R.，“在加密消息语法（CMS）中使用RSAES-OAEP密钥传输算法”，RFC 3560，2003年7月。
+
+   [RSAPSS]      施阿德，J.，“在加密消息语法（CMS）中使用RSASSA-PSS签名算法”，RFC 4056，2005年6月。
+
+   [SP800-56A]   NIST，“特殊出版物800-56A：使用离散对数密码的成对密钥建立方案（修订版）”，2007年3月。
+
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第40页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+   [X.680]       ITU-T建议X.680（2002）| ISO/IEC 8824-1:2002。信息技术——抽象语法符号一（ASN.1）：基本符号的规范。
+
+   [X.690]       ITU-T建议X.690（2002）| ISO/IEC 8825-1:2002。信息技术——ASN.1编码规则：基本编码规则（BER）、规范编码规则（CER）和特殊编码规则（DER）的规范。
+
+7.3.  说明性参考文献
+
+   [DHSUB]       祖凯拉托，R.，“避免Diffie-Hellman密钥协商中的“小子群”攻击的方法”，RFC 2785，2000年3月。
+
+   [HASH-ATTACK] 霍夫曼，P. 和 施莱尔，B.，“互联网协议中对密码哈希的攻击”，RFC 4270，2005年11月。
+
+   [MMA]         里斯科拉，E.，“防止密码消息语法的百万消息攻击”，RFC 3218，2002年1月。
+
+   [PKCS-7]      卡利斯基，B.，“PKCS #7：密码消息语法第1.5版”，RFC 2315，1998年3月。
+```
+
+以下是英文内容的中文翻译：
+
+```
+   [RFC2311]     Dusse, S., Hoffman, P., Ramsdell, B., Lundblade, L.,
+                 和 L. Repka，“S/MIME 2 版本消息规范”，
+                 RFC 2311，1998年3月。
+
+   [RFC2312]     Dusse, S., Hoffman, P., Ramsdell, B., 和 J.
+                 Weinstein，“S/MIME 2 版本证书处理”，RFC
+                 2312，1998年3月。
+
+   [RFC2313]     Kaliski, B.，“PKCS #1：RSA 加密第1.5版”，RFC
+                 2313，1998年3月。
+
+   [RFC2314]     Kaliski, B.，“PKCS #10：证书请求语法
+                 第1.5版”，RFC 2314，1998年3月。
+
+   [RFC2315]     Kaliski, B.，“PKCS #7：证书消息语法
+                 第1.5版”，RFC 2315，1998年3月。
+
+   [RFC2630]     Housley, R.，“加密消息语法”，RFC 2630，
+                 1999年6月。
+
+   [RFC2631]     Rescorla, E.，“Diffie-Hellman 密钥交换方法”，
+                 RFC 2631，1999年6月。
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第41页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+   [RFC2632]     Ramsdell, B.，编辑，“S/MIME 3 版本证书
+                 处理”，RFC 2632，1999年6月。
+
+   [RFC2633]     Ramsdell, B.，编辑，“S/MIME 3 版本消息
+                 规范”，RFC 2633，1999年6月。
+
+   [RFC3850]     Ramsdell, B.，编辑，“安全/多用途互联网邮件
+                 扩展（S/MIME）第3.1版证书处理”，
+                 RFC 3850，2004年7月。
+
+   [RFC3851]     Ramsdell, B.，编辑，“安全/多用途互联网邮件
+                 扩展（S/MIME）第3.1版消息规范”，
+                 RFC 3851，2004年7月。
+
+   [RFC3852]     Housley, R.，“加密消息语法（CMS）”，RFC
+                 3852，2004年7月。
+
+   [SP800-57]    国家标准与技术研究院（NIST），
+                 特别出版物800-57：密钥管理建议，2005年8月。
+
+   [STRENGTH]    Orman, H.，和 P. Hoffman，“确定用于交换对称密钥的
+                 公钥的强度”，BCP 86，RFC 3766，2004年4月。
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第42页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+附录A. ASN.1 模块
+
+   注：此处包含的ASN.1模块与RFC 3851 [SMIMEv3.1]中的内容相同，唯一变化是对 prefersBinaryInside ASN.1注释的更改。该模块使用的是1988版ASN.1。
+
+   SecureMimeMessageV3.1
+
+     { iso(1) member-body(2) us(840) rsadsi(113549)
+            pkcs(1) pkcs-9(9) smime(16) modules(0) msg-v3dot1(21) }
+
+   定义隐式标签 ::=
+
+   开始
+
+   导入
+
+   -- 加密消息语法 [CMS]
+      SubjectKeyIdentifier, IssuerAndSerialNumber,
+      RecipientKeyIdentifier
+          来自  CryptographicMessageSyntax
+                { iso(1) member-body(2) us(840) rsadsi(113549)
+                  pkcs(1) pkcs-9(9) smime(16) modules(0) cms-2001(14) };
+
+   --  id-aa 是由S/MIME工作组产生的所有新认证和非认证属性的弧线
+
+   id-aa OBJECT IDENTIFIER ::= {iso(1) member-body(2) usa(840)
+           rsadsi(113549) pkcs(1) pkcs-9(9) smime(16) attributes(2)}
+
+   -- S/MIME能力提供广播理解的对称能力的方法。算法应按偏好顺序排列，并按类型分组。
+
+   smimeCapabilities OBJECT IDENTIFIER ::= {iso(1) member-body(2)
+           us(840) rsadsi(113549) pkcs(1) pkcs-9(9) 15}
+
+   SMIMECapability ::= SEQUENCE {
+      capabilityID OBJECT IDENTIFIER,
+      parameters ANY DEFINED BY capabilityID OPTIONAL }
+
+   SMIMECapabilities ::= SEQUENCE OF SMIMECapability
+
+   -- 加密密钥偏好提供广播首选加密证书的方法。
+
+   id-aa-encrypKeyPref OBJECT IDENTIFIER ::= {id-aa 11}
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第43页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+   SMIMEEncryptionKeyPreference ::= CHOICE {
+      issuerAndSerialNumber   [0] IssuerAndSerialNumber,
+      receipentKeyId          [1] RecipientKeyIdentifier,
+      subjectAltKeyIdentifier [2] SubjectKeyIdentifier
+   }
+
+   -- receipentKeyId拼写错误，但出于历史原因保留。
+
+   id-smime OBJECT IDENTIFIER ::= { iso(1) member-body(2) us(840)
+           rsadsi(113549) pkcs(1) pkcs9(9) 16 }
+
+   id-cap  OBJECT IDENTIFIER ::= { id-smime 11 }
+
+   -- preferBinaryInside OID 表示能够接收在CMS包装内以二进制编码的消息。
+   -- preferBinaryInside属性的值字段是缺失的。
+
+   id-cap-preferBinaryInside  OBJECT IDENTIFIER ::= { id-cap 1 }
+
+   --  以下列出的OID将用于S/MIME V3
+
+   -- 在[CMSALG]、[CMS-SHA2]、[RSAPSS]和[RSAOAEP]中未找到的签名算法
+
+   --
+   -- md2WithRSAEncryption OBJECT IDENTIFIER ::=
+   --    {iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-1(1)
+   --     2}
+
+   --
+   -- 其他签名属性
+   --
+   -- signingTime OBJECT IDENTIFIER ::=
+   --    {iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-9(9)
+   --     5}
+   --  详见[CMS]，了解如何编码属性值。
+
+   SMIMECapabilitiesParametersForRC2CBC ::= INTEGER
+   --        （RC2 密钥长度（比特数））
+
+   结束
+
+
+
+
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第44页]
+
+
+RFC 5751            S/MIME 3.2 消息规范        2010年1月
+
+
+附录B. 将S/MIME v2消息规范转为历史状态
+
+   S/MIME v3 [SMIMEv3]、v3.1 [SMIMEv3.1] 和 v3.2（本文件）
+   与S/MIME v2消息规范 [SMIMEv2] 兼容，除了算法（取消了RC2/40
+   要求，增加了DSA和RSASSA-PSS的要求）。因此，建议将RFC 2311 [SMIMEv2]
+   转为历史状态。
+
+附录C. 致谢
+
+   非常感谢其他S/MIME v2消息规范RFC的作者：Steve Dusse、Paul Hoffman、
+   Laurence Lundblade 和 Lisa Repka。没有v2，就没有v3、v3.1或v3.2。
+
+   许多S/MIME工作组成员也付出了巨大努力，为本文档做出了贡献。任何列出的人都难免遗漏，为此我表示歉意。按字母顺序，以下几位在我心中尤为突出，因为他们对本文档做出了直接贡献：
+
+   Tony Capel、Piers Chivers、Dave Crocker、Bill Flanigan、Peter
+   Gutmann、Alfred Hoenes、Paul Hoffman、Russ Housley、William Ottaway、
+   John Pawling 和 Jim Schaad。
+
+作者联系方式
+
+   Blake Ramsdell
+   Brute Squad Labs, Inc.
+
+   电子邮箱：blaker@gmail.com
+
+
+   Sean Turner
+   IECA, Inc.
+   3057 Nutley Street, Suite 106
+   弗吉尼亚州费尔法克斯，邮编22031
+   美国
+
+   电子邮箱：turners@ieca.com
+
+
+
+
+
+
+
+
+
+
+Ramsdell & Turner            标准轨道                   [第45页]
+```

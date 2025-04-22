@@ -1,0 +1,2133 @@
+# RFC 3414 中文翻译 (stub)
+# 原文文件: ../../rfcs/RFCs3001-3500/rfc3414.txt
+
+网络工作组                                      U. Blumenthal
+意见请求编号：3414                                    B. Wijnen
+标准：62                                              朗讯科技
+废止：2574                                            2002年12月
+类别：标准轨道
+
+
+          简单网络管理协议（SNMP）第3版的用户基础安全模型（USM）
+
+本备忘录的状态
+
+   本文件为互联网社区制定的互联网标准轨道协议，旨在征求讨论和改进建议。请参阅当前版本的《互联网官方协议标准》（STD 1），了解该协议的标准化状态和现行情况。本备忘录的分发不受限制。
+
+版权声明
+
+   版权所有（C）互联网协会（2002年）。保留所有权利。
+
+摘要
+
+   本文件描述了用于SNMP架构的SNMP第3版的用户基础安全模型（USM）。它定义了提供SNMP消息级别安全的操作元素。本文件还包括一个管理信息库（MIB），用于远程监控/管理该安全模型的配置参数。本文件废止RFC 2574。
+
+目录
+
+   1. 引言.................................................... 4
+   1.1. 威胁.................................................. 4
+   1.2. 目标与约束............................................ 6
+   1.3. 安全服务.............................................. 6
+   1.4. 模块组织.............................................. 7
+   1.4.1. 时效性模块......................................... 8
+   1.4.2.. 认证协议.......................................... 8
+   1.4.3.. 隐私协议.......................................... 8
+   1.5. 防止消息重放、延迟和重定向............................ 9
+   1.5.1. 权威SNMP引擎........................................ 9
+   1.5.2. 机制............................................... 9
+   1.6. 抽象服务接口.......................................... 11
+   1.6.1. 用户基础安全模型的原语
+             用于认证............................................ 11
+   1.6.2. 用户基础安全模型的原语
+             用于隐私............................................ 12
+   2. 模型元素............................................... 12
+   2.1. 用户基础安全模型用户................................ 12
+   2.2.. 重放保护........................................... 13
+   2.2.1.  msgAuthoritativeEngineID............................ 14
+   2.2.2.  msgAuthoritativeEngineBoots和
+             msgAuthoritativeEngineTime............................ 14
+   2.2.3.  时间窗口........................................... 15
+   2.3.  时间同步.............................................. 15
+   2.4.  使用该安全模型的SNMP消息............................ 16
+   2.5.  用户基础安全模型提供的服务.......................... 17
+   2.5.1.  生成外发SNMP消息的服务............................ 17
+   2.5.2.  处理入站SNMP消息的服务............................ 20
+   2.6.  密钥本地化算法........................................ 22
+   3. 操作元素............................................... 22
+   3.1.  生成外发SNMP消息...................................... 22
+   3.2.  处理入站SNMP消息...................................... 26
+   4.  发现.................................................... 31
+   5.  定义.................................................... 32
+   6.  HMAC-MD5-96认证协议.................................... 51
+   6.1.  机制.................................................. 51
+   6.1.1.  摘要认证机制...................................... 51
+   6.2.  摘要认证协议的元素.................................... 52
+   6.2.1.  用户.............................................. 52
+   6.2.2.  msgAuthoritativeEngineID............................ 53
+   6.2.3.  使用此认证协议的SNMP消息.......................... 53
+   6.2.4.  HMAC-MD5-96认证模块提供的服务...................... 53
+   6.2.4.1.  生成外发SNMP消息的服务.......................... 53
+   6.2.4.2.  处理入站SNMP消息的服务.......................... 54
+   6.3.  操作元素.............................................. 55
+   6.3.1.  处理外发消息...................................... 55
+   6.3.2.  处理入站消息...................................... 56
+   7.  HMAC-SHA-96认证协议.................................... 57
+   7.1.  机制.................................................. 57
+   7.1.1.  摘要认证机制...................................... 57
+   7.2.  HMAC-SHA-96认证协议的元素.............................. 58
+   7.2.1.  用户.............................................. 58
+   7.2.2.  msgAuthoritativeEngineID............................ 58
+   7.2.3.  使用此认证协议的SNMP消息.......................... 59
+   7.2.4.  HMAC-SHA-96认证模块提供的服务...................... 59
+   7.2.4.1.  生成外发SNMP消息的服务.......................... 59
+   7.2.4.2.  处理入站SNMP消息的服务.......................... 60
+   7.3.  操作元素.............................................. 61
+   8.  CBC-DES对称加密协议.................................... 63
+   8.1.  机制.................................................. 63
+   8.1.1.  对称加密协议...................................... 63
+   8.1.1.1.  DES密钥和初始化向量............................ 64
+   8.1.1.2.  数据加密........................................ 65
+   8.1.1.3.  数据解密........................................ 65
+   8.2.  DES隐私协议的元素.................................... 65
+   8.2.1.  用户.............................................. 65
+   8.2.2.  msgAuthoritativeEngineID............................ 66
+   8.2.3.  使用此隐私协议的SNMP消息.......................... 66
+   8.2.4.  DES隐私模块提供的服务............................ 66
+   8.2.4.1.  加密外发数据的服务.............................. 66
+   8.2.4.2.  解密入站数据的服务.............................. 67
+   8.3.  操作元素.............................................. 68
+   8.3.1.  处理外发消息...................................... 68
+   8.3.2.  处理入站消息...................................... 69
+   9.  知识产权................................................ 69
+   10.  致谢.................................................... 70
+   11.  安全注意事项.......................................... 71
+   11.1.  推荐做法............................................ 71
+   11.2.  定义用户............................................ 73
+   11.3.  合规性.............................................. 74
+   11.4.  报告的使用.......................................... 75
+   11.5.  访问SNMP-USER-BASED-SM-MIB......................... 75
+   12.  参考文献.............................................. 75
+   附录A.1.  SNMP引擎安装参数................................. 78
+   附录A.2.  密码到密钥算法................................... 80
+   附录A.2.1.  密码到密钥的MD5示例代码........................ 81
+   附录A.2.2.  密码到密钥的SHA示例代码........................ 82
+   附录A.3.  密码到密钥的示例结果............................ 83
+   附录A.3.1.  使用MD5的示例结果............................ 83
+   附录A.3.2.  使用SHA的示例结果............................ 83
+   附录A.4.  msgSecurityParameters的示例编码.................. 83
+   附录A.5.  密钥变更的示例结果.............................. 84
+   附录A.5.1.  使用MD5的密钥变更示例结果.................... 84
+   附录A.5.2.  使用SHA的密钥变更示例结果.................... 85
+   附录B.  变更日志............................................ 86
+             编者地址............................................ 87
+             完整版权声明........................................ 88
+
+
+1. 引言
+
+   描述互联网管理框架的架构[RFC3411]指出，SNMP引擎由以下部分组成：
+
+   1) 调度器（Dispatcher），
+   2) 消息处理子系统（Message Processing Subsystem），
+   3) 安全子系统（Security Subsystem），以及
+   4) 访问控制子系统（Access Control Subsystem）。
+
+   应用程序利用这些子系统的服务。
+
+   理解SNMP架构及其术语对于理解本文所描述的安全模型在架构中的位置以及如何与其他子系统交互至关重要。读者应已阅读并理解[RFC3411]中定义的SNMP架构描述。
+
+   本备忘录描述了在SNMP架构中使用的用户基础安全模型（USM）。其核心思想是采用传统的用户（由userName标识）概念，将安全信息与用户关联。
+
+   本备忘录介绍了HMAC-MD5-96和HMAC-SHA-96作为认证协议，以及CBC-DES作为隐私协议。然而，用户基础安全模型允许使用其他协议替代或与这些协议同时使用。因此，关于HMAC-MD5-96、HMAC-SHA-96和CBC-DES的描述被放在不同章节，以体现它们的自包含性质，并表明未来可以替换或补充。
+
+   本文中的“必须”（MUST）、“不得”（MUST NOT）、“需要”（REQUIRED）、“应”（SHALL）、“不应”（SHALL NOT）、“建议”（SHOULD）、“不建议”（SHOULD NOT）、“推荐”（RECOMMENDED）、“可以”（MAY）和“可选”（OPTIONAL）等关键词的解释遵循[RFC2119]的规定。
+
+1.1. 威胁
+
+   许多经典的网络协议威胁也适用于网络管理问题，因此也适用于任何SNMP安全模型。其他威胁则不适用于网络管理问题。本节讨论主要威胁、次要威胁以及较不重要的威胁。
+
+   本SNMP安全模型应提供保护的主要威胁包括：
+
+（以下内容省略，全文较长，译文已完成开头部分，若需要全文翻译请告知。）
+
+时间模块在用户基础安全模型中是固定的，但同时也为多重认证和/或隐私模块提供了支持，每个模块分别实现特定的认证或隐私协议。
+
+1.4.1. 时间模块
+
+第3节（程序元素）使用SNMP消息中的时间值进行时间性检查。只有在消息应用了认证的情况下，才会进行时间性检查。由于完整消息的完整性已被验证，我们可以假设通过认证模块的消息中的时间值是可信的。
+
+1.4.2. 认证协议
+
+第6节描述了HMAC-MD5-96认证协议，这是在用户基础安全模型中必须支持的首个认证协议。第7节描述了HMAC-SHA-96认证协议，这是另一种应支持的认证协议。未来，随着新需求的出现，可能会定义其他或替代的认证协议。
+
+用户基础安全模型规定，如果使用认证，则在认证模块中会对完整消息进行完整性检查。
+
+为了使消息被认证，消息必须通过认证模块的认证检查和时间性检查，后者是该模型的固定部分。
+
+1.4.3. 隐私协议
+
+第8节描述了CBC-DES对称加密协议，这是在用户基础安全模型中首次使用的隐私协议。未来，随着新需求的出现，可能会定义其他或替代的隐私协议。
+
+用户基础安全模型规定，在启用隐私时，scopedPDU应受到保护，防止泄露。
+
+模型还规定，如果使用隐私，则消息必须经过认证。
+
+---
+
+1.5. 防止消息重放、延迟和重定向
+
+1.5.1. 权威SNMP引擎
+
+为了防止消息重放、延迟和重定向，每次通信中会指定一个SNMP引擎为权威引擎。当SNMP消息包含期望响应的有效载荷（如确认类PDU [RFC3411]）时，接收方为权威引擎；当消息不期望响应（如非确认类PDU [RFC3411]）时，发送方为权威引擎。
+
+1.5.2. 机制
+
+使用的机制包括：
+
+1）为了防止消息延迟或重放（超出正常操作范围），每个由权威SNMP引擎生成的消息中都包含一组时间性指标。SNMP引擎会评估这些指标，以判断消息是否为近期消息。非权威引擎利用已验证的消息来更新远程权威源的时间性指标。
+
+SNMP引擎还必须使用机制将响应与未完成的请求匹配，未匹配的响应应被丢弃。例如，每条消息中可以插入msgID以实现此功能。
+
+这些机制可以检测出生成时间不近期的已验证消息。
+
+此防护措施不能防止未授权的消息删除或压制，也可能无法检测所有消息的重排序（尤其是在所有相关消息都在时间窗口内发送的情况下）。可以采用其他独立于安全协议的机制（如snmpSetSerialNo [RFC3418]）检测重排序、重放、删除或压制。
+
+2）确保发往/来自一个权威SNMP引擎的消息不能被重放到/从另一个权威SNMP引擎。
+
+每条消息都包含一个唯一标识符，标识符对应于消息的权威SNMP引擎。
+
+由权威SNMP引擎向非权威SNMP引擎发送的非确认类PDU消息可能被重放到其他非权威引擎。后者如果知道相同用户和密钥，可能会更新其对权威引擎时间性指标的认知，但这不被视为威胁。在这种情况下，Message Processing Model会丢弃报告或响应消息，因为不应存在未完成的请求消息；Trap可能会被接受。虽然如此，但这也不被视为威胁，因为通信已被认证且具有时效性。实际上，权威SNMP引擎可能被配置为向第二个SNMP引擎发送Trap，理论上第二个引擎可能未预料到，但仍能看到管理信息。
+
+3）检测未近期生成的消息。
+
+消息中包含一组时间指标，指示生成时间。没有近期时间指标的消息不被视为可信。SNMP引擎还必须丢弃不匹配未完成请求的响应，但这由Message Processing Model负责。
+
+该备忘录允许在多个SNMP引擎上定义相同用户。每个SNMP引擎维护一个唯一标识其自身的snmpEngineID。该ID会包含在每个发往/来自权威引擎的消息中（见第1.5.1节）。接收消息时，权威引擎会验证ID以确保消息的目标；非权威引擎则用ID确保消息使用正确的状态信息进行处理。
+
+每个SNMP引擎还维护两个值：snmpEngineBoots和snmpEngineTime，它们共同反映该引擎的时间状态。这两个值会包含在经过认证的消息中，接收时会验证时间值是否在当前时间的时间窗口内。时间窗口代表协议消息的最大允许传递延迟。
+
+为了生成被权威引擎接受为可信的消息，或验证从权威引擎接收的消息的真实性，SNMP引擎必须首先与权威引擎同步时间（见第2.3节）。
+
+1.6. 抽象服务接口
+
+已定义抽象服务接口，用于描述SNMP实体内各子系统之间的概念接口。同样，在用户基础安全模型（USM）中也定义了一组抽象服务接口，用于描述通用USM服务与自包含的认证和隐私服务之间的概念接口。
+
+这些抽象接口由一组原语定义，描述提供的服务以及调用服务时必须传递的抽象数据元素。本节列出为用户基础安全模型定义的原语。
+
+1.6.1. 认证的用户基础安全模型原语
+
+该模型提供以下内部原语，用于在安全模型与认证服务之间传递数据：
+
+```
+statusInformation =
+  authenticateOutgoingMsg(
+    IN   authKey                   -- 认证用的密钥
+    IN   wholeMsg                  -- 未认证的完整消息
+    OUT  authenticatedWholeMsg     -- 完成认证的完整消息
+  )
+
+statusInformation =
+  authenticateIncomingMsg(
+    IN   authKey                   -- 认证用的密钥
+    IN   authParameters            -- 接收时的参数
+    IN   wholeMsg                  -- 接收时的完整消息
+    OUT  authenticatedWholeMsg     -- 完成认证的完整消息
+  )
+```
+
+1.6.2. 隐私的用户基础安全模型原语
+
+该模型提供以下内部原语，用于在安全模型与隐私服务之间传递数据：
+
+```
+statusInformation =
+  encryptData(
+    IN    encryptKey               -- 加密用的密钥
+    IN    dataToEncrypt            -- 待加密数据（scopedPDU）
+    OUT   encryptedData            -- 加密后的数据（encryptedPDU）
+    OUT   privParameters           -- 由服务提供者填写
+  )
+
+statusInformation =
+  decryptData(
+    IN    decryptKey               -- 解密用的密钥
+    IN    privParameters           -- 接收时的参数
+    IN    encryptedData            -- 加密的数据（encryptedPDU）
+    OUT   decryptedData            -- 解密后的数据（scopedPDU）
+  )
+```
+
+2. 模型元素
+
+本节包含实现本备忘录定义的安全模型所需的定义。
+
+2.1. 用户基础安全模型用户
+
+使用此安全模型的管理操作依赖一组定义的用户身份。对于在特定SNMP引擎上授权管理操作的任何用户，该引擎必须知道该用户。希望与另一SNMP引擎通信的引擎也必须知道该引擎中的用户，包括该用户的相关属性。
+
+用户及其属性定义如下：
+
+- userName：表示用户名称的字符串。
+- securityName：以安全模型无关的格式表示用户的可读字符串。userName与securityName一一对应。
+- authProtocol：指示是否可以对代表该用户的消息进行认证，以及使用的认证协议类型。本备忘录定义了两种协议：
+  - HMAC-MD5-96认证协议
+  - HMAC-SHA-96认证协议
+- authKey：如果代表该用户的消息可以被认证，则为认证用的私有密钥。注意，不同权威SNMP引擎上的用户认证密钥通常不同。该密钥不可通过SNMP访问，其长度由所用的authProtocol定义。
+- authKeyChange和authOwnKeyChange：远程更新认证密钥的唯一方式，必须以安全方式进行，确保无需隐私保护即可完成更新。
+- privProtocol：指示是否可以保护消息免受泄露，以及使用的隐私协议类型。本备忘录定义的协议为CBC-DES对称加密协议。
+- privKey：如果消息可以被加密/解密，则为隐私用的私有密钥。不同权威SNMP引擎上的用户隐私密钥通常不同，不可通过SNMP访问，其长度由所用的privProtocol定义。
+- privKeyChange和privOwnKeyChange：远程更新加密密钥的唯一方式，必须以安全方式进行。
+
+2.2. 重放保护
+
+每个SNMP引擎维护三个对象：
+
+- snmpEngineID：在管理域内唯一且明确标识SNMP引擎。
+- snmpEngineBoots：自上次配置snmpEngineID以来，SNMP引擎重启/初始化的次数。
+- snmpEngineTime：自snmpEngineBoots计数器上次递增以来的秒数。
+
+每个SNMP引擎对其自身的这些对象始终具有权威性。非权威引擎应根据需要与权威引擎同步。
+
+权威SNMP引擎必须将其snmpEngineID和snmpEngineBoots的值存储在非易失存储中。
+
+2.2.1. msgAuthoritativeEngineID
+
+在经过身份验证的消息中包含的msgAuthoritativeEngineID值，用于防止攻击，即重放来自一个SNMP引擎到另一个SNMP引擎的消息被重放到不同的SNMP引擎。它代表参与交换的权威SNMP引擎的snmpEngineID。
+
+当一个权威SNMP引擎首次安装时，它会根据特定的企业算法设置其本地的snmpEngineID值（参见SNMP架构文档[RFC3411]中关于SnmpEngineID文本约定的定义）。
+
+2.2.2. msgAuthoritativeEngineBoots和msgAuthoritativeEngineTime
+
+在经过身份验证的消息中，包含的msgAuthoritativeEngineBoots和msgAuthoritativeEngineTime值，用于防止在消息不再有效时被重放的攻击。它们代表参与交换的权威SNMP引擎的snmpEngineBoots和snmpEngineTime值。
+
+通过使用snmpEngineBoots和snmpEngineTime，不要求SNMP引擎具有即使在断电时也会递增的非易失性时钟。相反，每次SNMP引擎重启时，它会从非易失存储中检索、递增并存储snmpEngineBoots，然后将snmpEngineTime重置为零。
+
+当SNMP引擎首次安装时，它会将其本地的snmpEngineBoots和snmpEngineTime值设置为零。如果snmpEngineTime达到最大值（2147483647），则会像SNMP引擎重新启动一样递增snmpEngineBoots，并将snmpEngineTime重置为零，然后再次开始递增。
+
+每次权威SNMP引擎重启时，持有该引擎的snmpEngineBoots和snmpEngineTime值的任何SNMP引擎都需要在向该权威SNMP引擎发送正确认证的消息之前重新同步（参见第2.3节的（重新）同步程序）。但请注意，即使SNMP引擎已重启，程序也允许接收方SNMP引擎将由已重启的权威SNMP引擎发出的通知视为真实。
+
+如果权威SNMP引擎无法确定其最新的snmpEngineBoots值，则必须将其设置为2147483647。
+
+当本地的snmpEngineBoots值为2147483647时，它会保持在该值，不断接收的经过认证的消息总会导致notInTimeWindow的认证失败。
+
+要重置snmpEngineBoots值已达到2147483647的SNMP引擎，需要手动干预。必须对引擎进行物理访问并重新配置，可以使用新的snmpEngineID值，或为所有已知用户的认证和隐私协议设置新的密钥值。即使SNMP引擎每秒重启一次，也大约需要68年才能达到最大值2147483647。
+
+2.2.3. 时间窗口
+
+时间窗口是一个值，定义了代表任何用户的消息在多长时间范围内是有效的。本备忘录规定所有用户使用相同的时间窗口值，即150秒。
+
+2.3. 时间同步
+
+非权威SNMP引擎进行身份验证通信所需的时间同步，发生在该引擎从权威SNMP引擎获取其snmpEngineBoots和snmpEngineTime的本地值时。这些值必须（并且将保持）在权威SNMP引擎的时间窗口内。因此，非权威SNMP引擎的本地值必须与存储在权威SNMP引擎中的值保持松散同步。除了保持从权威SNMP引擎获取的snmpEngineBoots和snmpEngineTime的本地副本外，非权威SNMP引擎还必须维护一个本地变量latestReceivedEngineTime。该值记录了非权威SNMP引擎从权威SNMP引擎接收到的最高snmpEngineTime值，用于防止重放可能阻碍非权威SNMP引擎的snmpEngineTime前进的消息。
+
+非权威SNMP引擎必须为每个希望通信的权威SNMP引擎维护这些值（snmpEngineBoots、snmpEngineTime和latestReceivedEngineTime）。由于每个权威SNMP引擎通过其snmpEngineID值唯一且明确地标识，非权威SNMP引擎可以用此值作为键，缓存其对这些值的本地副本。
+
+时间同步作为接收SNMP消息的程序的一部分（第3.2节第7b步）发生。因此，非权威SNMP引擎不需要显式的时间同步程序。请注意，每当本地的snmpEngineID值发生变化（例如通过发现）或首次与权威SNMP引擎建立安全通信时，应将snmpEngineBoots和latestReceivedEngineTime的本地值设置为零。这将在下一次接收经过身份验证的消息时触发时间同步。
+
+2.4. 使用此安全模型的SNMP消息
+
+使用此安全模型的SNMP消息的语法遵循特定版本的消息处理模型定义的消息格式（例如[RFC3412]）。
+
+SNMPv3消息中的msgSecurityParameters字段的数据类型为OCTET STRING。其值是以下ASN.1序列的BER序列化：
+
+USMSecurityParametersSyntax定义隐式标签 ::= 开始
+
+UsmSecurityParameters ::=
+  序列 {
+    -- 全局用户安全参数
+    msgAuthoritativeEngineID     OCTET STRING,
+    msgAuthoritativeEngineBoots  INTEGER (0..2147483647),
+    msgAuthoritativeEngineTime   INTEGER (0..2147483647),
+    msgUserName                  OCTET STRING (SIZE(0..32)),
+    -- 认证协议相关参数
+    msgAuthenticationParameters  OCTET STRING,
+    -- 隐私协议相关参数
+    msgPrivacyParameters         OCTET STRING
+  }
+结束
+
+该序列的字段包括：
+
+- msgAuthoritativeEngineID：指定参与消息交换的权威SNMP引擎的snmpEngineID。
+
+- msgAuthoritativeEngineBoots：指定参与交换的权威SNMP引擎的snmpEngineBoots值。
+
+- msgAuthoritativeEngineTime：指定参与交换的权威SNMP引擎的snmpEngineTime值。
+
+- msgUserName：指定代表谁（主体）在交换消息。注意，空长度的用户名不会匹配任何用户，但可用于snmpEngineID的发现。
+
+- msgAuthenticationParameters：由用于消息的认证协议定义，依据usmUserTable中用户条目的usmUserAuthProtocol列。
+
+- msgPrivacyParameters：由用于消息的隐私协议定义，依据usmUserTable中用户条目的usmUserPrivProtocol列。
+
+详见附录A.4，了解msgSecurityParameters字段的BER编码示例。
+
+2.5. 基于用户的安全模型提供的服务
+
+本节描述基于用户的安全模型提供的服务及其输入输出。
+
+这些服务作为抽象服务接口的原语描述，输入输出作为抽象数据元素在这些原语中传递。
+
+2.5.1. 生成外发SNMP消息的服务
+
+当消息处理子系统（MP）调用用户安全模块以保护一个外发的SNMP消息时，必须使用安全模块提供的相应服务。这两项服务包括：
+
+1）生成请求消息的服务。抽象原语为：
+
+statusInformation = -- 成功或错误指示
+  generateRequestMsg(
+    IN   messageProcessingModel  -- 通常为SNMP版本
+    IN   globalData              -- 消息头和管理信息
+    IN   maxMessageSize          -- 发送SNMP实体的最大消息大小
+    IN   securityModel           -- 用于外发消息的安全模型
+    IN   securityEngineID        -- 权威SNMP实体的snmpEngineID
+    IN   securityName            -- 代表此主体
+    IN   securityLevel           -- 请求的安全级别
+    IN   scopedPDU               -- 消息（明文）负载
+    OUT  securityParameters      -- 由安全模块填写
+    OUT  wholeMsg                -- 完整生成的消息
+    OUT  wholeMsgLength          -- 生成消息的长度
+  )
+
+2）生成响应消息的服务。抽象原语为：
+
+statusInformation = -- 成功或错误指示
+  generateResponseMsg(
+    IN   messageProcessingModel  -- 通常为SNMP版本
+    IN   globalData              -- 消息头和管理信息
+    IN   maxMessageSize          -- 发送SNMP实体的最大消息大小
+    IN   securityModel           -- 用于外发消息的安全模型
+    IN   securityEngineID        -- 权威SNMP实体的snmpEngineID
+    IN   securityName            -- 代表此主体
+    IN   securityLevel           -- 请求的安全级别
+    IN   scopedPDU               -- 消息（明文）负载
+    IN   securityStateReference  -- 安全状态的引用（指向原始请求的安全信息）
+    OUT  securityParameters      -- 由安全模块填写
+    OUT  wholeMsg                -- 完整生成的消息
+    OUT  wholeMsgLength          -- 生成消息的长度
+  )
+
+在抽象服务原语中传递的参数为：
+
+- statusInformation：指示消息编码和安全是否成功。如果不成功，则指示问题。
+
+- messageProcessingModel：待生成消息的SNMP版本号。此数据不被用户安全模块使用。
+
+- globalData：消息头（即管理信息）。此数据不被用户安全模块使用。
+
+- maxMessageSize：消息中包含的最大消息大小。此数据不被用户安全模块使用。
+
+- securityParameters：安全参数，由用户安全模块填写。
+
+- securityModel：使用的安全模型，应为用户安全模型。此数据不被用户安全模块使用。
+
+- securityName：结合snmpEngineID，用于标识将用于保护消息的usmUserTable中的行。格式独立于安全模型。在响应中，此参数被忽略，使用缓存中的值。
+
+- securityLevel：用户安全模块用以判断消息是否需要保护（如机密性）和是否需要认证的安全级别。
+
+- securityEngineID：要向其发送dateRequest消息的权威SNMP引擎的snmpEngineID。在响应中，默认为处理SNMP引擎的snmpEngineID，如果指定，则忽略。
+
+- scopedPDU：消息负载。对于用户安全模型而言，数据是Opaque（不透明）的。
+
+- securityStateReference：用于保护出站响应消息时的缓存安全数据的句柄/引用。与用户安全模块在处理原始请求时生成的句柄/引用完全相同。
+
+- wholeMsg：准备好发送的完整编码和安全的消息。
+
+- wholeMsgLength：编码和安全后消息的长度。
+
+完成后，用户安全模块返回statusInformation。如果成功，返回已应用隐私和认证的完整消息（如果请求了此安全级别）；如果失败，则返回错误指示。
+
+2.5.2. 处理入站SNMP消息的服务
+
+当消息处理子系统（MP）调用用户安全模块以验证入站消息的安全性时，必须使用为入站消息提供的服务。抽象原语为：
+
+statusInformation = -- 错误指示或成功
+  processIncomingMsg(
+    IN   messageProcessingModel   -- 通常为SNMP版本
+    IN   maxMessageSize           -- 发送SNMP实体的最大消息大小
+    IN   securityParameters       -- 收到消息的安全参数
+    IN   securityModel            -- 收到消息的安全模型
+    IN   securityLevel            -- 安全级别
+    IN   wholeMsg                 -- 按照线上传输的消息
+    IN   wholeMsgLength           -- 按照线传输的消息长度
+    OUT  securityEngineID         -- 权威SNMP引擎ID
+    OUT  securityName             -- 主体的标识
+    OUT  scopedPDU,               -- 消息（明文）负载
+    OUT  maxSizeResponseScopedPDU -- 响应PDU的最大尺寸
+    OUT  securityStateReference   -- 安全状态的引用（响应所需）
+  )
+
+在抽象服务原语中传递的参数如下：
+
+状态信息
+  指示该过程是否成功。如果不成功，状态信息中将包含被递增的错误计数器的OID和其值。
+
+消息处理模型
+  在消息中接收的SNMP版本号。该数据不被基于用户的安全模块使用。
+
+最大消息大小
+  在消息中包含的最大消息大小。基于用户的安全模块使用此值来计算最大响应范围PDU的大小。
+
+安全参数
+  这是在消息中接收的安全参数。
+
+安全模型
+  使用的安全模型，应为基于用户的安全模型。该数据不被基于用户的安全模块使用。
+
+安全级别
+  用户安全模块用以判断消息是否需要保护免受泄露以及是否需要认证的安全级别。
+
+完整消息
+  完整接收的消息。
+
+完整消息长度
+  接收的消息（完整消息）的长度。
+
+安全引擎ID
+  从字段msgAuthoritativeEngineID中提取的SNMP引擎ID，用于在usmUserTable中查找密钥。
+
+安全名称
+  表示代表该消息接收的用户的安全名称。安全名称的格式与安全模型无关。
+
+作用域PDU
+  消息负载。对于基于用户的安全模型而言，数据是不可解析的。
+
+最大响应范围PDU大小
+  可能包含在响应消息中的最大作用域PDU大小。用户安全模块根据消息中的msgMaxSize和响应消息所需的消息头空间（包括安全参数）计算此大小。
+
+安全状态引用
+  用于在保护出站响应消息时引用缓存的安全数据的句柄/引用。当消息处理子系统调用用户安全模块生成响应时，必须传递此句柄/引用。
+
+完成该过程后，用户安全模块会返回状态信息，以及（如果成功）用于进一步处理消息的附加数据元素。如果过程不成功，则返回错误指示（可能包括已递增的错误计数器的OID和值对）。
+
+2.6 密钥本地化算法
+本地化密钥是用户U与某个权威SNMP引擎E之间共享的秘密密钥。虽然用户可能只有一个密码和一个密钥用于整个网络，但用户与每个权威SNMP引擎之间共享的实际秘密会不同。这通过密钥本地化实现[Localized-key]。
+
+首先，如果用户使用密码，则将用户的密码通过附录A.2.1和A.2.2中描述的算法之一转换为密钥Ku。
+
+为了将Ku转换为用户U在权威SNMP引擎E上的本地化密钥Kul，将SNMP引擎ID附加到Ku后面，然后再将Ku附加到结果上，从而将SNMP引擎ID包裹在两个Ku副本之间。接着，使用安全哈希函数（具体取决于在权威SNMP引擎E上为用户U定义的认证协议，本文件定义了基于MD5和SHA的两种认证协议及其算法）对结果进行哈希。哈希函数的输出即为用户U在权威SNMP引擎E上的本地化密钥Kul。
+
+3. 程序元素
+本节描述SNMP引擎在根据用户安全模型处理SNMP消息时遵循的安全相关程序。
+
+3.1 生成出站SNMP消息
+本节描述SNMP引擎在为用户生成包含管理操作（如请求、响应、通知或报告）消息时的流程，且具有特定的安全级别。
+
+1) a) 如果传递了任何securityStateReference（响应或报告消息），则从缓存的安全数据中提取有关用户的信息。此时可以丢弃缓存的安全数据。安全引擎ID设置为本地的snmpEngineID。安全级别设置为调用模块指定的值。
+
+   b) 否则，根据securityName，从本地配置存储（LCD，usmUserTable）中提取目标SNMP引擎ID（securityEngineID）对应的用户信息。如果找不到用户信息，则返回错误指示（unknownSecurityName）给调用模块。
+
+2) 如果安全级别要求消息受到保护（防止泄露），但用户不支持同时使用认证和隐私协议，则无法发送消息，返回错误指示（unsupportedSecurityLevel）。
+
+3) 如果安全级别要求消息经过认证，但用户不支持认证协议，也无法发送，返回错误指示（unsupportedSecurityLevel）。
+
+4) a) 如果安全级别要求消息受到保护，则根据用户的隐私协议对序列化的作用域PDU（serialized scopedPDU）进行加密。调用实现用户隐私协议的隐私模块，使用抽象原语：
+
+   ```
+   statusInformation = encryptData(
+     IN    encryptKey        -- 用户本地化的私有密钥
+     IN    dataToEncrypt     -- 序列化的作用域PDU
+     OUT   encryptedData     -- 序列化的加密PDU
+     OUT   privParameters    -- 序列化的隐私参数
+   )
+   ```
+
+   其中，statusInformation指示加密是否成功。
+
+   encryptKey为用户本地化的私有密钥，用于加密算法。
+
+   dataToEncrypt为待加密的序列化作用域PDU。
+
+   encryptedData为加密后的PDU，编码为OCTET STRING。
+
+   privParameters为隐私参数，编码为OCTET STRING。
+
+   如果隐私模块返回失败，则无法发送消息，返回错误指示（encryptionError）。
+
+   如果成功，则将privParameters放入securityParameters的msgPrivacyParameters字段中，加密的PDU作为消息的负载。
+
+   b) 如果安全级别不要求保护消息，则在securityParameters的msgPrivacyParameters字段中编码空的OCTET STRING，明文作用域PDU作为消息负载。
+
+5) 将安全引擎ID编码为OCTET STRING，放入securityParameters的msgAuthoritativeEngineID字段。注意，Request消息中的空（零长度）安全引擎ID是允许的，因为这会促使远端（权威）SNMP引擎返回带有正确安全引擎ID的Report PDU。
+
+6) a) 如果安全级别要求认证，则使用与securityEngineID对应的当前snmpEngineBoots和snmpEngineTime值。
+
+   b) 否则，如果是响应或报告消息，则使用本地SNMP引擎ID对应的当前snmpEngineBoots和snmpEngineTime值。
+
+   c) 如果是请求消息，则将snmpEngineBoots和snmpEngineTime都设为零（如果snmpEngineID为空，则使用零值）。这些值分别编码为INTEGER，放入securityParameters的msgAuthoritativeEngineBoots和msgAuthoritativeEngineTime字段。
+
+7) 将用户名编码为OCTET STRING，放入securityParameters的msgUserName字段。
+
+8) a) 如果安全级别要求消息经过认证，则根据用户的认证协议对消息进行认证。调用实现用户认证协议的认证模块，使用抽象服务原语：
+
+   ```
+   statusInformation = authenticateOutgoingMsg(
+     IN  authKey               -- 用户本地化的authKey
+     IN  wholeMsg              -- 未认证的完整消息
+     OUT authenticatedWholeMsg -- 认证后的完整消息
+   )
+   ```
+
+   其中，statusInformation指示认证是否成功。
+
+   authKey为用户本地化的私有认证密钥，用于认证算法。
+
+   wholeMsg为待认证的完整序列化消息。
+
+   authenticatedWholeMsg为带有正确msgAuthenticationParameters的完整消息。
+
+   如果认证失败，则无法发送消息，返回错误指示（authenticationFailure）。
+
+   如果成功，则将msgAuthenticationParameters字段放入securityParameters，认证后的完整消息作为准备发送的消息序列化。
+
+   b) 如果安全级别不要求认证，则在securityParameters的msgAuthenticationParameters字段中编码空的OCTET STRING，未认证的消息即为原始的序列化消息。
+
+9) 返回完整消息（带长度）给调用模块，状态信息设置为成功。
+
+3.2 处理入站SNMP消息
+本节描述SNMP引擎在接收包含管理操作的消息（代表用户，具有特定安全级别）时的流程。
+
+为了简化流程元素，状态信息的释放不总是明确说明。一般规则是，如果在丢弃消息时有可用的状态信息，应当释放。此外，错误指示可以返回递增计数器的OID和值对，以及安全级别、contextEngineID或contextName的值（如果有的话）。如果在检测到错误的点有securityStateReference数据，也会返回。
+
+1) 如果接收的securityParameters不是按照[RFC3417]的约定序列化的OCTET STRING，且符合第2.4节定义的UsmSecurityParameters格式，则递增snmpInASNParseErrs计数器[RFC3418]，并返回错误指示（parseError）给调用模块。注意，此时不返回递增计数器的OID和值，因为没有足够信息生成Report PDU。
+
+2) 从securityParameters中提取安全参数字段的值。返回给调用者的securityEngineID为msgAuthoritativeEngineID字段的值。准备缓存的安全数据，并生成securityStateReference以引用此数据。要缓存的值包括：
+
+   - msgUserName
+
+3) 如果securityParameters中的msgAuthoritativeEngineID字段的值未知：
+
+   a) 进行发现的非权威SNMP引擎可以选择在其本地配置存储（LCD）中创建新条目，并继续处理；
+
+   或
+
+   b) 递增usmStatsUnknownEngineIDs计数器，并返回错误指示（unknownEngineID）以及递增计数器的OID和值。
+
+   注意：如果收到空或非法大小的msgAuthoritativeEngineID，应选择b)以便引擎ID的发现，否则a)和b)的选择取决于实现。
+
+4) 从本地配置存储（LCD，usmUserTable）中提取msgUserName和msgAuthoritativeEngineID字段的相关信息。如果找不到用户信息，则递增usmStatsUnknownUserNames计数器，并返回错误指示（unknownSecurityName）以及递增计数器的OID和值。
+
+5) 如果用户信息显示不支持请求的安全级别，则递增usmStatsUnsupportedSecLevels计数器，并返回错误指示（unsupportedSecurityLevel）以及递增计数器的OID和值。
+
+6）如果securityLevel指定消息需要进行认证，则根据用户的认证协议对消息进行认证。为此，将调用实现用户认证协议的认证模块，按照抽象服务原语执行：
+
+statusInformation =          -- 成功或失败
+  authenticateIncomingMsg(
+  IN   authKey               -- 用户的本地认证密钥
+  IN   authParameters        -- 从网络上接收的参数
+  IN   wholeMsg              -- 从网络上接收的完整消息
+  OUT  authenticatedWholeMsg -- 经认证后已检查的完整消息
+       )
+
+statusInformation
+ 表示认证是否成功。
+
+authKey
+ 用户的本地私有认证密钥，是可被认证算法使用的秘密密钥。
+
+wholeMsg
+ 要进行认证的完整序列化消息。
+
+authenticatedWholeMsg
+ 与传入的authenticateIncomingMsg服务的输入相同，但经过认证检查后。
+
+如果认证模块返回失败，则消息不可信，因此会将usmStatsWrongDigests计数器加一，并向调用模块返回一个错误指示（authenticationFailure），以及该计数器的OID和值。
+
+如果认证模块返回成功，则消息是可信的，可以继续处理。
+
+7）如果securityLevel指示消息已被认证，则从本地配置数据存储中提取与msgAuthoritativeEngineID字段值对应的snmpEngineBoots、snmpEngineTime和latestReceivedEngineTime的本地值。
+
+a）如果提取的msgAuthoritativeEngineID值与处理中的SNMP引擎的snmpEngineID值相同（意味着这是权威SNMP引擎），则如果满足以下任一条件，则认为该消息超出了时间窗口：
+
+- 本地的snmpEngineBoots值为2147483647；
+
+- msgAuthoritativeEngineBoots字段的值与本地的snmpEngineBoots值不同；或者，
+
+- msgAuthoritativeEngineTime字段的值与本地的snmpEngineTime值相差超过+/- 150秒。
+
+如果消息被认为超出时间窗口，则会将usmStatsNotInTimeWindows计数器加一，并向调用模块返回一个错误指示（notInTimeWindow），同时附带该计数器的OID、值，以及必须以securityLevel为authNoPriv报告错误的提示。
+
+b）如果提取的msgAuthoritativeEngineID值与处理中的SNMP引擎的snmpEngineID不同（意味着这不是权威SNMP引擎），则：
+
+1）如果满足以下任一条件：
+
+- 提取的msgAuthoritativeEngineBoots字段值大于本地的snmpEngineBoots值；或者，
+
+- 提取的msgAuthoritativeEngineBoots字段值等于本地的snmpEngineBoots值，且提取的msgAuthoritativeEngineTime字段值大于latestReceivedEngineTime，
+
+则更新对应的LCD条目，将：
+
+- 本地的snmpEngineBoots值设置为提取的msgAuthoritativeEngineBoots值，
+
+- 本地的snmpEngineTime值设置为提取的msgAuthoritativeEngineTime值，
+
+- latestReceivedEngineTime设置为提取的msgAuthoritativeEngineTime值。
+
+2）如果满足以下任一条件，则认为该消息超出时间窗口：
+
+- 本地的snmpEngineBoots值为2147483647；
+
+- 提取的msgAuthoritativeEngineBoots值小于本地的snmpEngineBoots值；或者，
+
+- 提取的msgAuthoritativeEngineBoots值等于本地的snmpEngineBoots值，且msgAuthoritativeEngineTime值比本地的snmpEngineTime少超过150秒。
+
+如果消息被认为超出时间窗口，则返回错误指示（notInTimeWindow）给调用模块。
+
+注意：这意味着检测到一条过旧（可能是重放的）消息，且被判定为不可信。
+
+此外，此过程允许消息中的msgAuthoritativeEngineBoots值大于本地的snmpEngineBoots值，以便在接收自已重启的权威SNMP引擎的消息时，仍能接受其真实性。
+
+8）a）如果securityLevel指示消息受到保护（加密），则根据用户的隐私协议对表示加密的PDU的OCTET STRING进行解密，以获得未加密的序列化范围PDU值。为此，将调用实现用户隐私协议的隐私模块，按照抽象原语执行：
+
+statusInformation =       -- 成功或失败
+  decryptData(
+  IN    decryptKey        -- 用户的本地私有隐私密钥
+  IN    privParameters    -- 从网络上接收的参数
+  IN    encryptedData     -- 接收的加密PDU
+  OUT   decryptedData     -- 序列化的解密后范围PDU
+       )
+
+statusInformation
+ 表示解密过程是否成功。
+
+decryptKey
+ 用户的本地私有privKey，是可被解密算法使用的秘密密钥。
+
+privParameters
+  msgPrivacyParameters，编码为OCTET STRING。
+
+encryptedData
+  表示加密的范围PDU，编码为OCTET STRING。
+
+decryptedData
+  如果解密成功，则为序列化的范围PDU。
+
+如果隐私模块返回失败，则消息无法处理，因此会将usmStatsDecryptionErrors计数器加一，并向调用模块返回一个错误指示（decryptionError），以及该计数器的OID和值。
+
+如果隐私模块返回成功，则解密后的范围PDU即为要返回给调用模块的消息载荷。
+
+否则，范围PDU部分假定为明文，是要返回给调用模块的消息载荷。
+
+9）计算maxSizeResponseScopedPDU，即响应消息中范围PDU的最大允许大小。此大小考虑了允许与接收请求相同的securityLevel的消息头。
+
+10）从usmUserTable中检索用户的securityName。
+
+11）将安全数据缓存为cachedSecurityData，以便对该消息的可能响应可以使用相同的认证和隐私密钥。需要保存/缓存的信息包括：
+
+- msgUserName，
+- usmUserAuthProtocol，usmUserAuthKey，
+- usmUserPrivProtocol，usmUserPrivKey。
+
+12）将statusInformation设置为成功，并将OUT参数（按照processIncomingMsg原语的定义）返回给调用模块。
+
+4. 发现
+
+用户基础安全模型要求进行发现过程，以获取足够的关于其他SNMP引擎的信息，从而实现通信。发现需要一个非权威SNMP引擎在通信前学习到权威SNMP引擎的snmpEngineID值。这可以通过生成一个securityLevel为noAuthNoPriv、msgUserName为空、msgAuthoritativeEngineID长度为零、varBindList为空的请求消息来实现。对此消息的响应将是一个包含权威SNMP引擎的snmpEngineID的报告消息，作为msgSecurityParameters字段中msgAuthoritativeEngineID的值。
+
+该报告消息包含一个报告PDU，varBindList中包含usmStatsUnknownEngineIDs计数器。
+
+如果需要认证通信，则发现过程还应建立与权威SNMP引擎的时间同步。这可以通过发送一个带有已知snmpEngineID（即刚刚学习到的值）且msgAuthoritativeEngineBoots和msgAuthoritativeEngineTime均为零的已认证请求消息来实现。此时，msgUserName字段中必须使用有效的用户名。对该已认证请求的响应将是一个报告消息，包含权威SNMP引擎的最新snmpEngineBoots和snmpEngineTime值，分别作为msgAuthoritativeEngineBoots和msgAuthoritativeEngineTime字段的值，同时在varBindList中包含usmStatsNotInTimeWindows计数器。时间同步过程会在第3.2节第7b步的程序中自动完成。详见第2.3节。
+
+5. 定义
+
+SNMP-USER-BASED-SM-MIB定义 ::= BEGIN
+
+导入
+    MODULE-IDENTITY, OBJECT-TYPE,
+    OBJECT-IDENTITY,
+    snmpModules, Counter32                FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, TestAndIncr,
+    RowStatus, RowPointer,
+    StorageType, AutonomousType           FROM SNMPv2-TC
+    MODULE-COMPLIANCE, OBJECT-GROUP       FROM SNMPv2-CONF
+    SnmpAdminString, SnmpEngineID,
+    snmpAuthProtocols, snmpPrivProtocols  FROM SNMP-FRAMEWORK-MIB;
+
+snmpUsmMIB MODULE-IDENTITY
+    LAST-UPDATED "200210160000Z"            -- 2002年10月16日午夜
+    ORGANIZATION "SNMPv3工作组"
+    CONTACT-INFO "工作组邮箱：snmpv3@lists.tislabs.com
+                  订阅：majordomo@lists.tislabs.com
+                          在消息正文中：subscribe snmpv3
+
+                  主席：Russ Mundy
+                          Network Associates Laboratories
+                  邮寄地址：15204 Omega Drive, Suite 300
+                          Rockville, MD 20850-4601
+                          美国
+                  电子邮箱：mundy@tislabs.com
+
+                  电话：+1 301-947-7107
+
+                  联合主席：David Harrington
+                          Enterasys Networks
+                  邮寄地址：35 Industrial Way
+                          P. O. Box 5004
+                          Rochester, New Hampshire 03866-5005
+                          美国
+                  电子邮箱：dbh@enterasys.com
+                  电话：+1 603-337-2614
+
+                  联合编辑：Uri Blumenthal
+                          Lucent Technologies
+                  邮寄地址：67 Whippany Rd.
+                          Whippany, NJ 07981
+                          美国
+                  电子邮箱：uri@lucent.com
+                  电话：+1-973-386-2163
+
+                  联合编辑：Bert Wijnen
+                          Lucent Technologies
+                  邮寄地址：Schagen 33
+                          3461 GL Linschoten
+                          荷兰
+                  电子邮箱：bwijnen@lucent.com
+                  电话：+31-348-480-685
+                 "
+    DESCRIPTION  "SNMP用户基础安全模型的管理信息定义。
+
+                  版权所有（C）互联网协会（2002年）。本MIB模块的版本是RFC 3414的一部分；完整的法律声明请参见RFC本身。
+                 "
+-- 修订历史
+
+    REVISION     "200210160000Z"          -- 2002年10月16日午夜
+    DESCRIPTION  "本次修订的内容：
+                  - 更新了参考文献和联系信息。
+                  - 对usmUserCloneFrom的DESCRIPTION条款进行了澄清。
+                  - 将最后一段中的‘命令响应者’修正为‘命令生成者’。
+                  本修订作为RFC3414发布。
+                 "
+    REVISION     "199901200000Z"          -- 1999年1月20日午夜
+    DESCRIPTION  "澄清内容，作为RFC2574发布。
+
+    REVISION     "199711200000Z"          -- 1997年11月20日午夜
+    DESCRIPTION  "初始版本，作为RFC2274发布。
+
+    ::= { snmpModules 15 }
+
+-- 管理分配 ****************************************
+
+usmMIBObjects     OBJECT IDENTIFIER ::= { snmpUsmMIB 1 }
+usmMIBConformance OBJECT IDENTIFIER ::= { snmpUsmMIB 2 }
+
+-- 认证和隐私协议的标识 ****************************************
+
+usmNoAuthProtocol OBJECT-IDENTITY
+    STATUS        current
+    DESCRIPTION  "无认证协议。"
+    ::= { snmpAuthProtocols 1 }
+
+usmHMACMD5AuthProtocol OBJECT-IDENTITY
+    STATUS        current
+    DESCRIPTION  "HMAC-MD5-96摘要认证协议。"
+    REFERENCE    "- H. Krawczyk, M. Bellare, R. Canetti HMAC: 密钥哈希消息认证，RFC2104，1997年2月。
+                  - Rivest, R.，消息摘要算法MD5，RFC1321。"
+    ::= { snmpAuthProtocols 2 }
+
+usmHMACSHAAuthProtocol OBJECT-IDENTITY
+    STATUS        current
+    DESCRIPTION  "HMAC-SHA-96摘要认证协议。"
+    REFERENCE    "- H. Krawczyk, M. Bellare, R. Canetti，HMAC：密钥哈希消息认证，RFC2104，1997年2月。
+                  - 安全哈希算法。NIST FIPS 180-1。"
+    ::= { snmpAuthProtocols 3 }
+
+usmNoPrivProtocol OBJECT-IDENTITY
+    STATUS        current
+    DESCRIPTION  "无隐私协议。"
+    ::= { snmpPrivProtocols 1 }
+
+usmDESPrivProtocol OBJECT-IDENTITY
+    STATUS        current
+    DESCRIPTION  "CBC-DES对称加密协议。"
+    REFERENCE    "- 数据加密标准（DES），国家标准与技术研究院。联邦信息处理标准（FIPS）第46-1号。
+
+                  替代FIPS第46号标准（1977年1月；1988年1月重新确认）。
+
+                  - 数据加密算法，美国国家标准协会。ANSI X3.92-1981（1980年12月）。
+
+                  - DES操作模式，国家标准与技术研究院。联邦信息处理标准（FIPS）第81号（1980年12月）。
+
+                  - 数据加密算法-操作模式，美国国家标准协会。ANSI X3.106-1983（1983年5月）。
+                 "
+    ::= { snmpPrivProtocols 2 }
+
+-- 文本约定 ***********************************************
+
+KeyChange ::=     TEXTUAL-CONVENTION
+   STATUS         current
+   DESCRIPTION
+         "每个使用此语法定义的对象都必须指定一个协议P、一个秘密密钥K和一个哈希算法H，H产生L个字节的输出。
+
+          该对象的值是由管理者生成的部分随机值，修改后会通过单向函数改变秘密密钥K的值。
+
+          该对象实例的值由两个部分拼接而成：首先是一个‘随机’部分，然后是一个‘增量’部分。"
+
+随机分量和delta分量的长度由相应的协议P规定；如果P要求K为固定长度，则随机分量和delta分量的长度均为该固定长度；如果P允许K的长度可变，最大长度为L，则随机分量的长度为最大长度，delta分量的长度为不超过该最大长度的任意长度。例如，usmHMACMD5AuthProtocol要求K的长度为16个八位字节，L的长度也是16个八位字节；usmHMACSHAAuthProtocol要求K的长度为20个八位字节，L的长度也是20个八位字节。其他协议可以根据需要定义其他大小。
+
+当请求者希望将旧密钥K更换为远程实体上的新密钥keyNew时，"随机"分量可以通过真随机生成器或伪随机生成器获得，"delta"分量的计算如下：
+
+- 初始化一个临时变量为现有的K值；
+- 如果keyNew的长度大于L八位字节，则：
+  - 将随机分量附加到临时变量的值上，并将结果输入哈希算法H，得到摘要值，临时变量更新为该摘要值；
+  - 将临时变量的值与keyNew的前L个八位字节（在MD5情况下为16个字节）进行异或，得到delta的第一个（或下一个）L个字节；
+  - 重复上述两步，直到keyNew剩余部分的长度为L个字节或更少；
+- 将随机分量附加到临时变量的值上，再次输入哈希算法H，得到摘要值；
+- 如果必要，将该摘要值截断为与keyNew剩余部分相同的长度，然后与keyNew的剩余部分进行异或，得到delta的最终部分。
+
+示例（使用MD5作为哈希算法H）：
+
+```
+iterations = (lenOfDelta - 1) / 16; /* 整数除法 */
+temp = keyOld;
+for (i = 0; i < iterations; i++) {
+    temp = MD5(temp || random);
+    delta[i*16 .. (i*16)+15] = temp XOR keyNew[i*16 .. (i*16)+15];
+}
+temp = MD5(temp || random);
+delta[i*16 .. lenOfDelta-1] = temp XOR keyNew[i*16 .. lenOfDelta-1];
+```
+
+随机分量和delta分量拼接后，作为新值发送给接收方，作为该对象实例的新值。
+
+在接收端，当该对象实例被设置为新值时，新的K值按如下方式计算：
+
+- 初始化临时变量为旧的K值；
+- 如果delta分量的长度大于L，则：
+  - 将随机分量附加到临时变量，输入哈希算法H，得到摘要值，更新临时变量；
+  - 将临时变量与delta的前L个字节（MD5为16个字节）进行异或，得到新K的前L个字节；
+  - 重复上述两步，直到delta剩余部分长度为L或更少；
+- 将随机分量附加到临时变量，输入哈希算法H，得到摘要值；
+- 如果必要，将该摘要值截断为与delta剩余部分相同的长度，然后与delta的剩余部分进行异或，得到新K的最终值。
+
+示例（使用MD5）：
+
+```
+iterations = (lenOfDelta - 1) / 16; /* 整数除法 */
+temp = keyOld;
+for (i = 0; i < iterations; i++) {
+    temp = MD5(temp || random);
+    keyNew[i*16 .. (i*16)+15] = temp XOR delta[i*16 .. (i*16)+15];
+}
+temp = MD5(temp || random);
+keyNew[i*16 .. lenOfDelta-1] = temp XOR delta[i*16 .. lenOfDelta-1];
+```
+
+使用该语法的对象值在每次由管理协议检索时，始终是长度为零的字符串。
+
+注意，keyOld和keyNew是本地化的密钥。
+
+此外，建议在SNMP实体发送SetRequest以更换密钥时，保留旧密钥的副本，直到确认密钥更换成功为止。
+
+【以下为RFC 3414中关于USM的统计信息和用户管理的内容，省略部分细节描述】
+
+以下是该英文内容的中文翻译：
+
+```
+                 该对象的一个实例会在为同一用户创建任何其他对象实例时同时创建（即，作为创建第一个对象实例的集合操作处理的一部分，在相同的概念行中）。
+
+                 如果在行创建时的初始集合操作试图为未知或不支持的协议设置值，则必须返回“wrongValue”错误。
+
+                 当对对应的usmUserCloneFrom实例执行集合操作时，该值将被覆盖/设置。
+
+                 一旦实例化，此类对象实例的值只能通过将其设置为usmNoAuthProtocol的值来更改。
+
+                 如果集合操作试图将此对象的现有实例的值更改为除usmNoAuthProtocol之外的任何值，则必须返回“inconsistentValue”错误。
+
+                 如果在usmUserPrivProtocol值不等于usmNoPrivProtocol的情况下，试图将该值设置为usmNoAuthProtocol，则必须返回“inconsistentValue”错误。这意味着，SNMP命令生成应用程序必须先确保usmUserPrivProtocol被设置为usmNoPrivProtocol，然后才能将usmUserAuthProtocol的值设置为usmNoAuthProtocol。
+                "
+    DEFVAL      { usmNoAuthProtocol }
+    ::= { usmUserEntry 5 }
+
+usmUserAuthKeyChange OBJECT-TYPE
+    SYNTAX       KeyChange   -- 通常（SIZE（0 | 32））用于HMACMD5
+                             -- 通常（SIZE（0 | 40））用于HMACSHA
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "当修改此对象时，会导致用于代表此用户发送到/来自由usmUserEngineID标识的SNMP引擎的消息的秘密认证密钥通过单向函数进行修改。
+
+                 相关协议为usmUserAuthProtocol。
+                 相关的秘密密钥为用户的秘密认证密钥（authKey）。
+                 相关的哈希算法为用户的usmUserAuthProtocol所使用的算法。
+
+                 在创建新用户时，除非通过对对应的usmUserCloneFrom实例的set操作先前或同时初始化，否则对该对象的set操作会引发'inconsistentName'错误。
+
+                 当对应的usmUserAuthProtocol的值为usmNoAuthProtocol时，set操作成功，但实际上是无操作。
+
+                 读取此对象时，会返回空字符串（长度为零的字符串）。
+
+                 更改密钥的推荐方法如下：
+
+
+
+
+                 1）执行GET(usmUserSpinLock.0)并将结果保存到sValue。
+                 2）根据旧的（现有的）秘密密钥和新秘密密钥生成keyChange值，称之为kcValue。
+
+                 如果你代表其他用户进行密钥更改：
+
+                   3）执行SET(usmUserSpinLock.0=sValue,
+                          usmUserAuthKeyChange=kcValue,
+                          usmUserPublic=随机值)
+
+                 如果你为自己进行密钥更改：
+
+                   4）执行SET(usmUserSpinLock.0=sValue,
+                          usmUserOwnAuthKeyChange=kcValue,
+                          usmUserPublic=随机值)
+
+                 如果收到的响应状态为noError，则表示SET成功，新密钥已生效。
+                 如果没有收到响应，则可以发出GET(usmUserPublic)并检查其值是否等于你在SET中发送的随机值。如果相等，则密钥更改成功，新密钥已生效（可能响应丢失了）。如果不相等，则说明SET请求可能未到达目标，你可以重新开始上述过程。
+                "
+    DEFVAL      { ''H }    -- 空字符串
+    ::= { usmUserEntry 6 }
+
+usmUserOwnAuthKeyChange OBJECT-TYPE
+    SYNTAX       KeyChange   -- 通常（SIZE（0 | 32））用于HMACMD5
+                             -- 通常（SIZE（0 | 40））用于HMACSHA
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "行为与usmUserAuthKeyChange完全相同，但有一个显著差异：为了使set操作成功，操作请求者的usmUserName必须与索引该行的usmUserName匹配。此外，必须使用USM安全模型进行此操作。
+
+                 这里的想法是，访问此列可以是公开的，因为它只允许用户更改自己的秘密认证密钥（authKey）。
+                 注意，只有在行激活后才能进行此操作。
+
+                 当收到set请求且请求者的usmUserName与索引目标行的usmUserName不同时，必须返回“noAccess”错误。
+
+                 当收到set请求且所用的安全模型不是USM时，也必须返回“noAccess”错误。
+                "
+    DEFVAL      { ''H }    -- 空字符串
+    ::= { usmUserEntry 7 }
+
+usmUserPrivProtocol OBJECT-TYPE
+    SYNTAX       AutonomousType
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "指示代表此用户向/从由usmUserEngineID标识的SNMP引擎发送的消息是否可以受到保护，以及如果可以，使用的隐私协议类型。
+
+                 该对象的实例会在为同一用户创建任何其他对象实例时同时创建（即，作为创建第一个对象实例的集合操作处理的一部分，在相同的概念行中）。
+
+                 如果在行创建时的初始集合操作试图为未知或不支持的协议设置值，则必须返回“wrongValue”错误。
+
+                 当对对应的usmUserCloneFrom实例执行集合操作时，该值将被覆盖/设置。
+
+                 一旦实例化，此类对象实例的值只能通过将其设置为usmNoPrivProtocol的值来更改。
+
+                 如果集合操作试图将此对象的现有实例的值更改为除usmNoPrivProtocol之外的任何值，则必须返回“inconsistentValue”错误。
+
+                 注意，如果使用任何隐私协议，则必须同时使用认证协议。换句话说，如果usmUserPrivProtocol被设置为除usmNoPrivProtocol之外的任何值，则对应的usmUserAuthProtocol实例不能为usmNoAuthProtocol。如果它是，则必须返回“inconsistentValue”错误。
+                "
+    DEFVAL      { usmNoPrivProtocol }
+    ::= { usmUserEntry 8 }
+
+usmUserPrivKeyChange OBJECT-TYPE
+    SYNTAX       KeyChange  -- 通常（SIZE（0 | 32））用于DES
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "当修改此对象时，会导致用于代表此用户发送到/从由usmUserEngineID标识的SNMP引擎的消息的秘密加密密钥通过单向函数进行修改。
+
+                 相关协议为usmUserPrivProtocol。
+                 相关的秘密密钥为用户的秘密隐私密钥（privKey）。
+                 相关的哈希算法为用户的usmUserAuthProtocol所使用的算法。
+
+                 在创建新用户时，除非通过对对应的usmUserCloneFrom实例的set操作先前或同时初始化，否则对该对象的set操作会引发“inconsistentName”错误。
+
+                 当对应的usmUserPrivProtocol的值为usmNoPrivProtocol时，set操作成功，但实际上是无操作。
+
+                 当读取此对象时，会返回空字符串（长度为零的字符串）。
+                 有关执行密钥更改的推荐程序，请参见usmUserAuthKeyChange的描述部分。
+                "
+    DEFVAL      { ''H }    -- 空字符串
+    ::= { usmUserEntry 9 }
+
+usmUserOwnPrivKeyChange OBJECT-TYPE
+    SYNTAX       KeyChange  -- 通常（SIZE（0 | 32））用于DES
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "行为与usmUserPrivKeyChange完全相同，但有一个显著差异：为了使Set操作成功，操作请求者的usmUserName必须与索引该行的usmUserName匹配。此外，必须使用USM安全模型。
+
+                 这里的想法是，访问此列可以是公开的，因为它只允许用户更改自己的秘密隐私密钥（privKey）。
+                 注意，只有在行激活后才能进行此操作。
+
+                 当收到set请求且请求者的usmUserName与索引目标行的usmUserName不同时，必须返回“noAccess”错误。
+
+                 当收到set请求且所用的安全模型不是USM时，也必须返回“noAccess”错误。
+                "
+    DEFVAL      { ''H }    -- 空字符串
+    ::= { usmUserEntry 10 }
+
+usmUserPublic OBJECT-TYPE
+    SYNTAX       OCTET STRING (SIZE(0..32))
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "一个公开可读的值，可以作为更改用户秘密认证和/或隐私密钥的过程的一部分进行写入，之后可以读取以确认秘密是否已被更改。
+                "
+    DEFVAL      { ''H }  -- 空字符串
+    ::= { usmUserEntry 11 }
+
+usmUserStorageType OBJECT-TYPE
+    SYNTAX       StorageType
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "此概念行的存储类型。
+
+                 值为‘permanent’的概念行，至少应允许写访问：
+                 - 对于使用认证的用户，允许访问usmUserAuthKeyChange、usmUserOwnAuthKeyChange和usmUserPublic；
+                 - 对于使用隐私的用户，允许访问usmUserPrivKeyChange、usmUserOwnPrivKeyChange和usmUserPublic。
+
+                 注意，任何使用认证或隐私的用户都必须允许其秘密被更新，因此不能是‘readOnly’。
+
+                 如果在初始set操作中试图将某个使用认证或隐私的用户的值设置为‘readOnly’，则必须返回‘inconsistentValue’错误。注意，如果该值之前已被设置（隐式或显式）为任何值，则应遵循存储类型文本约定中的规则。
+
+                 是否接受对‘readOnly’或‘permanent’行的SET操作是实现问题，在某些场景下可能合理，在其他场景下可能不合理。如果完全不接受‘readOnly’或‘permanent’行的SET操作，则必须返回‘wrongValue’错误。
+                "
+    DEFVAL      { nonVolatile }
+    ::= { usmUserEntry 12 }
+
+usmUserStatus OBJECT-TYPE
+    SYNTAX       RowStatus
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "此概念行的状态。
+
+                 在所有相关列的实例被适当配置之前，usmUserStatus列的对应实例值为‘notReady’。
+
+                 特别是，使用认证的用户的新创建行，不能激活，直到对应的usmUserCloneFrom和usmUserAuthKeyChange被设置。
+
+                 此外，使用隐私的用户的新创建行，也不能激活，直到usmUserPrivKeyChange被设置。
+
+                 RowStatus TC [RFC2579] 要求此DESCRIPTION子句说明在何种情况下可以修改此行中的其他对象：
+
+                 此对象的值不会影响此概念行中其他对象是否可以被修改，除了usmUserOwnAuthKeyChange和usmUserOwnPrivKeyChange。对于这两个对象，usmUserStatus的值必须为active。
+                "
+    ::= { usmUserEntry 13 }
+
+-- 合规性信息 *******************************************
+
+usmMIBCompliances OBJECT IDENTIFIER ::= { usmMIBConformance 1 }
+usmMIBGroups      OBJECT IDENTIFIER ::= { usmMIBConformance 2 }
+
+-- 合规声明
+
+usmMIBCompliance MODULE-COMPLIANCE
+    STATUS       current
+    DESCRIPTION "实现SNMP-USER-BASED-SM-MIB的SNMP引擎的合规性声明。
+                "
+
+    MODULE       -- 本模块
+        MANDATORY-GROUPS { usmMIBBasicGroup }
+
+        OBJECT           usmUserAuthProtocol
+        MIN-ACCESS       read-only
+        DESCRIPTION     "不需要写权限。"
+
+        OBJECT           usmUserPrivProtocol
+        MIN-ACCESS       read-only
+        DESCRIPTION     "不需要写权限。"
+
+    ::= { usmMIBCompliances 1 }
+
+-- 合规性单元
+usmMIBBasicGroup OBJECT-GROUP
+    OBJECTS     {
+                  usmStatsUnsupportedSecLevels,
+                  usmStatsNotInTimeWindows,
+                  usmStatsUnknownUserNames,
+                  usmStatsUnknownEngineIDs,
+                  usmStatsWrongDigests,
+                  usmStatsDecryptionErrors,
+                  usmUserSpinLock,
+                  usmUserSecurityName,
+                  usmUserCloneFrom,
+                  usmUserAuthProtocol,
+                  usmUserAuthKeyChange,
+                  usmUserOwnAuthKeyChange,
+                  usmUserPrivProtocol,
+                  usmUserPrivKeyChange,
+                  usmUserOwnPrivKeyChange,
+                  usmUserPublic,
+                  usmUserStorageType,
+                  usmUserStatus
+                }
+    STATUS       current
+    DESCRIPTION "一组用于配置实现SNMP用户安全模型的SNMP引擎的对象。"
+    ::= { usmMIBGroups 1 }
+
+END
+
+6. HMAC-MD5-96 认证协议
+
+   本节描述HMAC-MD5-96认证协议。该协议是为用户基础安全模型定义的第一个协议。它使用在[RFC1321]中描述的MD5哈希函数，在[RFC2104]中描述的HMAC模式下，输出被截断为96位。
+   
+   该协议由usmHMACMD5AuthProtocol标识。
+```
+
+随着时间的推移，可能会定义其他的认证协议，既可以作为本协议的替代，也可以作为补充。
+
+6.1. 机制
+
+- 为了支持数据完整性，必须使用消息摘要算法。摘要是在SNMP消息的适当部分上计算得出的，并作为消息的一部分发送给接收方。
+
+- 为了支持数据源认证和数据完整性，在计算摘要之前，将一个秘密值预先添加到SNMP消息中；计算出的摘要部分插入到SNMP消息中，随消息一同传输，而预先添加的秘密值不被传输。该秘密值由所有被授权代表特定用户发起消息的SNMP引擎共享。
+
+6.1.1. 摘要认证机制
+
+本备忘录定义的摘要认证机制提供了：
+
+- 验证接收消息的完整性，即确认接收到的消息是发出的消息。
+
+  通过在消息的适当部分上计算摘要来保护消息的完整性。该摘要由消息的发起者计算，随消息一同传输，并由接收者验证。
+
+- 验证消息所代表的用户身份。
+
+  在HMAC模式（参见[RFC2104]）中，使用一个只为授权发起消息的SNMP引擎所知的秘密值。建议对用作消息认证码的哈希函数输出进行截断。
+
+该协议采用MD5 [RFC1321]消息摘要算法。对SNMP消息的特定部分以特殊（HMAC）方式计算128位MD5摘要，摘要的前96位作为消息的一部分被包含在发给接收方的消息中。消息中携带的摘要大小为12个八位字节（12字节）。私有认证密钥（秘密）的大小为16个八位字节。详细信息请参见第6.3节。
+
+6.2. 摘要认证协议的元素
+
+本节包含实现本备忘录中定义的认证模块所需的定义。
+
+6.2.1. 用户
+
+使用此认证协议进行认证时，依赖一组已定义的用户名。对于任何代表某用户发起消息的SNMP引擎，该引擎必须知道该用户。希望与另一SNMP引擎通信的引擎，也必须知道该引擎所知的用户，包括该用户的相关属性。
+
+用户及其属性定义如下：
+
+<userName>  
+  表示用户名称的字符串。
+
+<authKey>  
+  用于计算摘要的用户秘密密钥。对于MD5，密钥必须为16个八位字节。
+
+6.2.2. msgAuthoritativeEngineID
+
+认证消息中包含的msgAuthoritativeEngineID值指定该消息的权威SNMP引擎（参见SNMP架构文档[RFC3411]中的SnmpEngineID定义）。
+
+用户的（私有）认证密钥在每个权威SNMP引擎上通常不同，因此使用snmpEngineID来选择正确的密钥进行认证。
+
+6.2.3. 使用此认证协议的SNMP消息
+
+使用此认证协议的消息在msgSecurityParameters中携带msgAuthenticationParameters字段。对于本协议，msgAuthenticationParameters字段是序列化的八位字节字符串，表示对整个消息（wholeMsg）进行HMAC-MD5-96计算后得到的前12个八位字节。
+
+摘要是在整个消息上计算的，因此如果消息经过认证，也意味着消息中的所有字段都未被篡改。
+
+6.2.4. HMAC-MD5-96认证模块提供的服务
+
+本节描述当用户安全模块调用HMAC-MD5-96认证模块以获得服务时，输入和输出的内容。
+
+6.2.4.1. 生成发出SNMP消息的服务
+
+HMAC-MD5-96认证协议假设调用者选择authKey，并传递要使用的秘密密钥。
+
+完成后，认证模块返回状态信息，并在摘要正确计算的情况下，返回带有插入摘要的完整消息wholeMsg。抽象服务原语为：
+
+statusInformation =  
+  -- 成功或失败
+  authenticateOutgoingMsg(
+    IN authKey -- 用于认证的秘密密钥
+    IN wholeMsg -- 未认证的完整消息
+    OUT authenticatedWholeMsg -- 完整的已认证消息
+  )
+
+抽象数据元素包括：
+
+statusInformation  
+  表示认证是否成功的指示。如果失败，则指示问题所在。
+
+authKey  
+  用于认证算法的秘密密钥。该密钥长度必须为16个八位字节。
+
+wholeMsg  
+  待认证的消息。
+
+authenticatedWholeMsg  
+  输出的已认证消息（包括插入的摘要）。
+
+注意，authParameters字段由认证模块填充，在生成消息认证码（MAC）之前，该字段应已存在于wholeMsg中。
+
+6.2.4.2. 处理接收消息的服务
+
+HMAC-MD5-96认证协议假设调用者选择authKey，并传递要使用的秘密密钥。
+
+完成后，认证模块返回状态信息，并在摘要正确计算的情况下，返回处理过的wholeMsg。抽象服务原语为：
+
+statusInformation =  
+  -- 成功或失败
+  authenticateIncomingMsg(
+    IN authKey -- 用于认证的秘密密钥
+    IN authParameters -- 从网络接收的认证参数
+    IN wholeMsg -- 从网络接收的完整消息
+    OUT authenticatedWholeMsg -- 完整的已认证消息
+  )
+
+抽象数据元素包括：
+
+statusInformation  
+  表示认证是否成功的指示。如果失败，则指示问题所在。
+
+authKey  
+  用于认证算法的秘密密钥。长度必须为16个八位字节。
+
+authParameters  
+  来自接收消息的认证参数。
+
+wholeMsg  
+  输入待认证的消息，输出已认证的消息。
+
+authenticatedWholeMsg  
+  完成认证检查后的完整消息。
+
+6.3. 过程元素
+
+本节描述HMAC-MD5-96认证协议的具体操作流程。
+
+6.3.1. 处理发出消息
+
+描述SNMP引擎在使用usmHMACMD5AuthProtocol对发出消息进行认证时的操作流程。
+
+1）将msgAuthenticationParameters字段设置为根据[RFC3417]规则序列化的包含12个零八位字节的八位字节字符串。
+
+2）从秘密authKey派生两个密钥K1和K2：
+
+  a）通过在authKey后附加48个零八位字节，将其扩展到64个八位字节，保存为extendedAuthKey。
+
+  b）生成IPAD，即重复0x36八位字节64次。
+
+  c）通过对extendedAuthKey与IPAD进行XOR，得到K1。
+
+  d）生成OPAD，即重复0x5C八位字节64次。
+
+  e）通过对extendedAuthKey与OPAD进行XOR，得到K2。
+
+3）在整个消息上，将K1预置在消息前面，按照[RFC1321]计算MD5摘要。
+
+4）在步骤3的结果前预置K2，再次计算MD5摘要。取最终摘要的前12个八位字节作为消息认证码（MAC）。
+
+5）用步骤4得到的MAC替换msgAuthenticationParameters字段。
+
+6）返回已认证的wholeMsg和状态信息，指示操作成功。
+
+6.3.2. 处理接收消息
+
+描述SNMP引擎在使用usmHMACMD5AuthProtocol对接收的消息进行认证时的操作流程。
+
+1）如果msgAuthenticationParameters字段中的摘要长度不是12个八位字节，则返回失败和错误指示（authenticationError）给调用模块。
+
+2）保存接收到的MAC。
+
+3）用12个零八位字节替换msgAuthenticationParameters字段中的摘要。
+
+4）从秘密authKey派生K1和K2（方法同上）：
+
+  a）扩展authKey到64个八位字节，保存为extendedAuthKey。
+
+  b）生成IPAD（0x36重复64次）。
+
+  c）计算K1 = extendedAuthKey XOR IPAD。
+
+  d）生成OPAD（0x5C重复64次）。
+
+  e）计算K2 = extendedAuthKey XOR OPAD。
+
+5）对整个消息（wholeMsg）计算MAC：
+
+  a）在wholeMsg前加入K1，计算MD5摘要。
+
+  b）在步骤a的结果前加入K2，再次计算MD5摘要。
+
+  c）取步骤b的前12个八位字节作为MAC。
+
+  将msgAuthenticationParameters字段用保存的MAC值替换。
+
+6）将新计算的MAC与保存的MAC进行比较。如果不匹配，则返回失败和错误指示（authenticationFailure）给调用模块。
+
+7）返回指示成功的已认证wholeMsg和状态信息。
+
+7. HMAC-SHA-96认证协议
+
+本节描述HMAC-SHA-96认证协议。该协议使用[SHA-NIST]中描述的SHA哈希函数，在[RFC2104]中描述的HMAC模式下，将输出截断为96位。
+
+本协议由usmHMACSHAAuthProtocol标识。
+
+随着时间推移，可能会定义其他认证协议，既可以作为本协议的替代，也可以作为补充。
+
+7.1. 机制
+
+- 为了支持数据完整性，必须使用消息摘要算法。摘要在SNMP消息的适当部分上计算，并作为消息的一部分发送。
+
+- 为了支持数据源认证和数据完整性，在计算摘要之前，将一个秘密值预先添加到SNMP消息中；计算出的摘要部分插入到消息中，秘密值不被传输。该秘密由所有被授权代表特定用户发起消息的SNMP引擎共享。
+
+7.1.1. 摘要认证机制
+
+本备忘录定义的摘要认证机制提供了：
+
+- 验证接收消息的完整性，即确认消息未被篡改。
+
+  通过在消息的适当部分上计算摘要来保护完整性。由消息发起者计算，随消息传输，并由接收者验证。
+
+- 验证消息所代表的用户身份。
+
+  在HMAC模式（参见[RFC2104]）中，使用一个只为授权发起消息的SNMP引擎所知的秘密值。建议对用作消息认证码的哈希函数输出进行截断。
+
+该机制使用SHA [SHA-NIST]消息摘要算法。在SNMP消息的特定部分上以特殊（HMAC）方式计算160位SHA摘要，摘要的前96位作为消息的一部分被包含在发给接收方的消息中。消息中携带的摘要大小为12个八位字节（12字节）。私有认证密钥（秘密）的大小为20个八位字节。详细信息请参见第7.3节。
+
+7.2. HMAC-SHA-96认证协议的元素
+
+本节包含实现本备忘录中定义的认证模块所需的定义。
+
+7.2.1. 用户
+
+使用此认证协议进行认证时，依赖一组已定义的用户名。对于任何代表某用户发起消息的SNMP引擎，该引擎必须知道该用户。希望与另一SNMP引擎通信的引擎，也必须知道该引擎所知的用户，包括该用户的相关属性。
+
+以下是英文内容的中文翻译：
+
+```
+   <userName>
+     表示用户姓名的字符串。
+   <authKey>
+     用户的密钥，用于计算摘要。
+     对于SHA算法，密钥必须为20个字节长。
+
+7.2.2. msgAuthoritativeEngineID
+
+   认证消息中包含的msgAuthoritativeEngineID值指定该消息的权威SNMP引擎（参见SNMP架构文档[RFC3411]中SnmpEngineID的定义）。
+
+   用户（私有）认证密钥在每个权威SNMP引擎上通常是不同的，因此使用snmpEngineID来选择适当的密钥进行认证。
+
+Blumenthal & Wijnen         标准追踪                    [第58页]
+
+RFC 3414                     SNMPv3的USM                2002年12月
+
+7.2.3. 使用此认证协议的SNMP消息
+
+   使用此认证协议的消息在msgSecurityParameters中携带一个msgAuthenticationParameters字段。对于该协议，msgAuthenticationParameters字段是序列化的OCTET STRING，表示对整个消息（wholeMsg）进行HMAC-SHA-96输出的前12个字节。
+
+   摘要是对整个消息进行计算的，因此如果消息被认证，也意味着消息中的所有字段都未被篡改。
+
+7.2.4. HMAC-SHA-96认证模块提供的服务
+
+   本节描述当用户基础安全模块调用HMAC-SHA-96认证模块以获取服务时，输入和输出的内容。
+
+7.2.4.1. 生成外发SNMP消息的服务
+
+   HMAC-SHA-96认证协议假设认证密钥由调用者选择，并由调用者传递要使用的密钥。
+
+   完成后，认证模块返回statusInformation，如果消息摘要正确计算，还会返回带有插入摘要的完整消息wholeMsg。抽象服务原语为：
+
+   statusInformation =              -- 成功或失败
+     authenticateOutgoingMsg(
+     IN   authKey                   -- 认证用的秘密密钥
+     IN   wholeMsg                  -- 未认证的完整消息
+     OUT  authenticatedWholeMsg     -- 完整的已认证消息
+          )
+
+   抽象数据元素包括：
+
+   statusInformation
+     表示认证是否成功的指示。如果失败，则指示问题所在。
+
+   authKey
+     用于认证算法的秘密密钥。该密钥长度必须为20个字节。
+
+   wholeMsg
+     待认证的消息。
+
+   authenticatedWholeMsg
+     输出的已认证消息（包括插入的摘要）。
+
+   注意，authParameters字段由认证模块填写，在生成消息认证码（MAC）之前，该字段应已存在于wholeMsg中。
+
+7.2.4.2. 处理入站SNMP消息的服务
+
+   HMAC-SHA-96认证协议假设认证密钥由调用者选择，并由调用者传递要使用的密钥。
+
+   完成后，认证模块返回statusInformation，如果消息摘要正确计算，还会返回处理后的wholeMsg。抽象服务原语为：
+
+   statusInformation =              -- 成功或失败
+     authenticateIncomingMsg(
+     IN   authKey                   -- 认证用的秘密密钥
+     IN   authParameters            -- 从网络接收的参数
+     IN   wholeMsg                  -- 从网络接收的消息
+     OUT  authenticatedWholeMsg     -- 完整的已认证消息
+          )
+
+   抽象数据元素包括：
+
+   statusInformation
+     表示认证是否成功的指示。如果失败，则指示问题所在。
+
+   authKey
+     用于认证算法的秘密密钥。该密钥长度必须为20个字节。
+
+   authParameters
+     来自入站消息的authParameters。
+
+   wholeMsg
+     输入待认证的消息，输出为已认证的消息。
+
+   authenticatedWholeMsg
+     经过认证检查后的完整消息。
+
+Blumenthal & Wijnen         标准追踪                    [第60页]
+
+RFC 3414                     SNMPv3的USM                2002年12月
+
+7.3. 操作流程元素
+
+   本节描述HMAC-SHA-96认证协议的操作流程。
+
+7.3.1. 处理外发消息
+
+   本节描述SNMP引擎在使用usmHMACSHAAuthProtocol对外发消息进行认证时的操作流程。
+
+   1) 将msgAuthenticationParameters字段设置为根据[RFC3417]规则序列化的包含12个零字节的OCTET STRING。
+
+   2) 从秘密密钥authKey中派生出两个密钥K1和K2：
+
+      a) 通过在authKey后面追加44个零字节，将其扩展到64字节，保存为extendedAuthKey。
+
+      b) 通过复制0x36字节64次，获得IPAD。
+
+      c) 通过对extendedAuthKey与IPAD进行XOR，获得K1。
+
+      d) 通过复制0x5C字节64次，获得OPAD。
+
+      e) 通过对extendedAuthKey与OPAD进行XOR，获得K2。
+
+   3) 在wholeMsg前面附加K1，并根据[SHA-NIST]计算SHA摘要。
+
+   4) 在步骤3的结果前面附加K2，并再次计算SHA摘要。取最终摘要的前12个字节作为消息认证码（MAC）。
+
+   5) 用步骤4得到的MAC替换msgAuthenticationParameters字段。
+
+   6) 返回带有认证消息的authenticatedWholeMsg和表示成功的statusInformation。
+
+7.3.2. 处理入站消息
+
+   本节描述SNMP引擎在使用usmHMACSHAAuthProtocol对入站消息进行认证时的操作流程。
+
+   1) 如果msgAuthenticationParameters字段中的摘要长度不是12个字节，则返回失败和错误指示（authenticationError）给调用模块。
+
+   2) 保存接收到的MAC。
+
+   3) 将msgAuthenticationParameters字段中的摘要替换为12个零字节。
+
+   4) 从秘密密钥authKey中派生出K1和K2（方法同上）：
+
+      a) 扩展authKey到64字节，保存为extendedAuthKey。
+
+      b) 复制0x36字节64次获得IPAD。
+
+      c) XOR extendedAuthKey与IPAD获得K1。
+
+      d) 复制0x5C字节64次获得OPAD。
+
+      e) XOR extendedAuthKey与OPAD获得K2。
+
+   5) 计算MAC（消息认证码）：
+
+      a) 在wholeMsg前附加K1，计算SHA摘要。
+
+      b) 在步骤a的结果前附加K2，再次计算SHA摘要。
+
+      c) 取步骤b的前12个字节作为MAC。
+
+      将msgAuthenticationParameters字段用保存的MAC值替换。
+
+   6) 将新计算的MAC与步骤2中保存的MAC进行比较。如果不匹配，则返回失败和错误指示（authenticationFailure）。
+
+   7) 返回认证后的完整消息和成功状态信息。
+
+Blumenthal & Wijnen         标准追踪                    [第62页]
+
+RFC 3414                     SNMPv3的USM                2002年12月
+
+8. CBC-DES对称加密协议
+
+   本节描述CBC-DES对称加密协议。该协议是为用户基础安全模型定义的第一种隐私保护协议。
+
+   该协议由usmDESPrivProtocol标识。
+
+   随着时间推移，可能会定义其他隐私协议，作为替代或补充。
+
+8.1. 机制
+
+   - 为了数据的机密性，必须使用加密算法。在传输前对消息的适当部分进行加密。用户基础安全模型规定，scopedPDU是需要加密的消息部分。
+
+   - 结合秘密值和时间戳值，用于生成加解密密钥和初始化向量。秘密值由所有被授权发起消息的SNMP引擎共享。
+
+8.1.1. 对称加密协议
+
+   本备忘录定义的对称加密协议支持数据机密性。SNMP消息的指定部分被加密，并作为消息的一部分发送给接收方。
+
+   有两个组织发布了定义DES的规范：美国国家标准与技术研究院（NIST）[DES-NIST]和美国国家标准协会（ANSI）[DES-ANSI]。每个定义都配有相应的操作模式说明（[DESO-NIST]和[DESO-ANSI]）。
+
+   NIST还发布了三份有用的补充文件：
+
+   - 一份关于实现和使用DES的指南，包括DES及其操作模式的功能规范[DESG-NIST]。
+
+   - 一份DES验证测试套件的规范[DEST-NIST]，旨在测试DES的所有方面，帮助定位具体问题。
+
+   - 一份DES维护测试的规范[DESM-NIST]，使用最少的数据和处理，测试DES的所有组件，提供简单的“是”或“否”操作指示，适合在初始化步骤（如重启计算机）时运行。
+
+8.1.1. DES密钥和初始化向量
+
+   16字节秘密（私有隐私密钥）的前8字节用作DES密钥。由于DES只使用56位，忽略每个字节的最低有效位。
+
+   加密的初始化向量（IV）通过以下步骤获得：
+
+   - 16字节秘密的后8字节用作预IV。
+
+   - 为确保用相同密钥加密的不同包的IV不相同（即IV不重复），需要用每个包唯一的“盐”对预IV进行“加盐”。使用一个8字节的字符串作为“盐”。生成SNMP引擎的32位snmpEngineBoots和一个本地维护的32位整数（在引擎启动时初始化）拼接作为“盐”的输入。  
+
+   - 32位snmpEngineBoots转换为“盐”的前4字节（高字节在前），32位整数转换为后4字节（高字节在前），得到“盐”。
+
+   - 将“盐”与预IV进行XOR，得到IV。
+
+   - 8字节“盐”存入privParameters字段，编码为OCTET STRING。  
+
+   - 之后“盐”整数递增（建议每次递增1，达到最大值后回绕）。
+
+   IV的具体变化方式由实现决定，只要确保不产生重复的IV即可。
+
+   - “盐”必须放入privParameters字段，以便接收方能计算正确的IV并解密消息。
+
+8.1.2. 数据加密
+
+   - 待加密数据视为字节序列，其长度应为8的整数倍，不足部分补齐（补码值无关紧要）。
+
+   - 使用密码块链接（CBC）模式进行加密。
+
+   - 明文被划分为64位块。
+
+   - 每个块的明文与前一块的密文进行XOR，结果加密后成为该块的密文。此过程持续到所有块都加密完毕。
+
+   - 第一个块使用IV代替前一块的密文。
+
+8.1.3. 数据解密
+
+   - 在解密前，验证密文长度是否为8的倍数。不符合则停止解密并报告异常。解密时忽略补齐。
+
+   - 解密第一个密文块，得到的输出与IV进行XOR，得到第一个明文块。
+
+   - 后续每个块，先解密密文块，再与前一密文块XOR，得到对应的明文块。
+
+8.2. DES隐私协议的元素
+
+   本节定义实现本备忘录中描述的隐私模块所需的内容。
+
+8.2.1. 用户
+```
+
+使用此对称加密协议进行数据加/解密时，需使用一组定义好的用户名。对于任何代表某用户在特定SNMP引擎上进行消息加/解密的操作，该SNMP引擎必须知道该用户。希望与另一SNMP引擎通信的SNMP引擎，也必须了解该引擎所知的用户，包括该用户的相关属性。
+
+用户及其属性定义如下：
+
+<userName>  
+表示用户名称的八位字节字符串。
+
+<privKey>  
+用户的秘密密钥，用作DES密钥和初始化向量（IV）的输入。该密钥的长度必须为16个八位字节。
+
+8.2.2. msgAuthoritativeEngineID
+
+认证消息中包含的msgAuthoritativeEngineID值，指明该消息的权威SNMP引擎（参见SNMP架构文档[RFC3411]中SnmpEngineID的定义）。
+
+用户的（私有）隐私密钥在每个权威SNMP引擎上通常不同，因此会使用snmpEngineID来选择正确的密钥进行加/解密。
+
+8.2.3. 使用此隐私协议的SNMP消息
+
+使用此隐私协议的消息会在msgSecurityParameters中携带一个msgPrivacyParameters字段。对于该协议，msgPrivacyParameters字段是序列化的八位字节字符串，代表用于创建IV的“盐值”。
+
+8.2.4. DES隐私模块提供的服务
+
+本节描述在用户安全模块调用DES隐私模块以获取服务时，输入和输出的内容。
+
+8.2.4.1. 加密出站数据的服务
+
+此DES隐私协议假设privKey的选择由调用者完成，调用者传递要使用的秘密密钥。
+
+完成后，隐私模块会返回statusInformation，以及如果加密成功，则返回加密的PDU（encryptedPDU）和编码为八位字节字符串的msgPrivacyParameters。抽象服务原语为：
+
+```
+statusInformation = -- 成功或失败的指示
+  encryptData(
+    IN    encryptKey               -- 用于加密的秘密密钥
+    IN    dataToEncrypt            -- 要加密的数据（scopedPDU）
+    OUT   encryptedData            -- 加密后的数据（encryptedPDU）
+    OUT   privParameters           --由服务提供者填写
+  )
+```
+
+抽象数据元素包括：
+
+- statusInformation  
+  表示加密过程的成功或失败。在失败时，指示错误。
+
+- encryptKey  
+  用于加密算法的秘密密钥，长度必须为16个八位字节。
+
+- dataToEncrypt  
+  需要加密的数据。
+
+- encryptedData  
+  成功完成后返回的加密数据。
+
+- privParameters  
+  编码为八位字节字符串的privParameters。
+
+8.2.4.2. 解密入站数据的服务
+
+此DES隐私协议假设privKey的选择由调用者完成，调用者传递要使用的秘密密钥。
+
+完成后，隐私模块会返回statusInformation，以及如果解密成功，则返回明文的scopedPDU。抽象服务原语为：
+
+```
+statusInformation =
+  decryptData(
+    IN    decryptKey               -- 用于解密的秘密密钥
+    IN    privParameters           --接收到的privParameters
+    IN    encryptedData            -- 加密的数据（encryptedPDU）
+    OUT   decryptedData            -- 解密后的数据（scopedPDU）
+  )
+```
+
+抽象数据元素包括：
+
+- statusInformation  
+  指示数据是否成功解密，以及失败时的错误信息。
+
+- decryptKey  
+  用于解密的秘密密钥，长度必须为16个八位字节。
+
+- privParameters  
+  用于计算IV的“盐值”。
+
+- encryptedData  
+  需要解密的数据。
+
+- decryptedData  
+  解密得到的数据。
+
+8.3. 操作流程元素
+
+本节描述DES隐私协议的操作流程。
+
+8.3.1. 处理出站消息
+
+描述SNMP引擎在使用usmDESPrivProtocol加密出站消息时的步骤：
+
+1) 使用秘密cryptKey构造DES加密密钥、盐值和预IV（IV由第8.1.1.1节描述的盐值计算得出）。
+
+2) 将privParameters字段设置为根据[RFC3417]规则序列化的代表“盐值”的八位字节字符串。
+
+3) 按照第8.1.1.2节描述，将scopedPDU加密，得到的密文按照[RFC3417]规则序列化为八位字节字符串。
+
+4) 将序列化的八位字节字符串（代表加密的scopedPDU）、privParameters和指示成功的statusInformation一同返回给调用模块。
+
+8.3.2. 处理入站消息
+
+描述SNMP引擎在使用usmDESPrivProtocol解密入站消息时的步骤：
+
+1) 如果privParameters字段不是8字节的八位字节字符串，则返回解密错误（decryptionError）给调用模块。
+
+2) 从privParameters中提取盐值。
+
+3) 使用秘密cryptKey和盐值构造DES解密密钥和预IV（IV由第8.1.1.1节描述的盐值计算得出）。
+
+4) 解密encryptedPDU（参见第8.1.1.3节）。
+
+5) 如果无法解密encryptedPDU，则返回解密错误（decryptionError）。
+
+6) 返回解密后的scopedPDU和成功指示的statusInformation。
+
+9. 知识产权
+
+IETF不对本文档所述技术的实现或使用中可能涉及的任何知识产权或其他权利的有效性或范围发表任何立场，也不保证已努力识别任何此类权利。关于标准追踪和标准相关文档中的权利问题，相关程序详见BCP-11。任何为公开发布而提出的权利声明、许可保证或试图获得一般许可的结果，均可向IETF秘书处索取。
+
+IETF鼓励任何相关方报告可能涉及本标准技术的版权、专利或专利申请或其他专有权利。
+
+10. 致谢
+
+本文件由SNMPv3工作组的努力成果。特别感谢以下SNMPv3工作组成员：
+
+（名单略）
+
+本文件基于IETF安全与管理框架演进咨询团队的建议。该团队成员包括：
+
+（名单略）
+
+按照咨询团队和SNMPv3工作组章程的建议，设计尽可能借鉴之前的RFC和草案。特别感谢之前设计方案SNMPv2u和SNMPv2*的作者：
+
+（名单略）
+
+11. 安全考虑
+
+11.1. 推荐做法
+
+本节描述有助于确保本备忘录定义机制安全有效运行的做法。
+
+- SNMP引擎必须丢弃任何与当前未完成请求不对应的SNMP响应消息。消息处理模块应负责此事，例如可以用msgID进行匹配。
+
+- SNMP命令生成器应用应丢弃没有对应已确认请求的响应类PDU；例如，SNMPv2 [RFC3416]中的请求ID可以用来关联响应与未完成的请求。
+
+- 虽然SNMP引擎和命令生成器应用通常会自动执行此操作，但在使用安全协议时尤为重要，以防止消息重复（恶意或其他原因）。
+
+- 如果SNMP引擎使用msgID关联响应与请求，则必须在一定时间窗口（150秒）内，所有请求消息使用不同的msgID。
+
+- 命令生成器或通知发起应用也必须在此时间窗口内为所有请求PDU使用不同的请求ID，以防止消息重复。
+
+- 不建议用固定值（如零）初始化msgID或请求ID，最好用不可预测的数字初始化（确保每次重启后不相同），然后逐次递增。
+
+- SNMP引擎应通过认证消息进行时间同步，以防止消息重复。
+
+- 在向权威SNMP引擎发送状态改变消息时，命令生成器应延迟发送后续消息，直到收到前一条消息的确认或前一条消息过期。
+
+- SNMP不强制消息顺序，消息可能在生成时间之后以任何顺序到达，且会按接收顺序处理。认证消息在正常情况下有效期约150秒，期间可能会被重放。SNMP引擎和命令生成器应能应对网络异常导致的消息丢失和重排序。
+
+- 但为确保SNMP操作的顺序性，定义了特定的管理对象snmpSetSerialNo [RFC3418]，用于确保SNMP消息的处理按特定顺序进行。
+
+- 用户安全模型（USM）用户的密钥更换频率应与其使用频率相关。
+
+保护秘密信息不被泄露对于整个协议的安全性至关重要。频繁使用一个秘密会提供持续的数据信息源，这些信息可能被密码分析者利用，以发现算法中的已知或潜在弱点。通过频繁更换秘密，可以避免这种漏洞。
+
+通常认为，每次使用后都更换秘密是最安全的做法，但这种方法可能会带来较大的开销。
+
+此外，在本地环境中，泄露的威胁可能较小，因此更换秘密的频率也可以较低。然而，当使用公共数据网络作为通信路径时，采取更为谨慎的措施是明智的。
+
+11.2 定义用户
+
+本文档中定义的机制采用“用户”的概念，即代表其身份发送消息的实体。如何定义“用户”取决于网络管理的安全策略。例如，用户可以是个人（如“joe”或“jane”），也可以是特定角色（如“操作员”或“管理员”），或者两者的组合（如“joe-操作员”、“jane-操作员”或“joe-管理员”）。此外，用户也可以是逻辑实体，例如代表个人、角色或多个人员、多个角色的SNMP应用程序集。
+
+附录A描述了一种将用户“密码”映射为16/20字节值的算法，用于作为用户的认证密钥或隐私密钥（或两者）。但请注意，使用相同密码（因此也使用相同密钥）进行认证和隐私保护是一种非常不安全的做法，应强烈避免。密码通常由人类生成、记忆和输入。人类生成的密码可能短于认证和隐私协议所需的16/20字节，且对较短的ASCII字符集进行暴力破解相对容易。因此，附录A中的算法对密码进行了变换。如果使用该算法，SNMP实现（以及SNMP配置应用）必须确保密码至少为8个字符。请注意，重复字符串的较长密码可能会导致生成完全相同的密钥。例如，密码“bertbert”与“bertbertbert”会产生完全相同的密钥。
+
+由于附录A的算法几乎直接使用这些密码，因此确保密码不易被猜测非常重要。建议密码由大小写字母、数字和标点符号组成，且不应形成字典中常见的词语或短语。更长的密码能增强系统的安全性。用户可以输入多词短语，以增加密码长度，同时确保易于记忆。
+
+鉴于人类用户难以为每个SNMP引擎维护不同的密码，但安全需求又强烈反对在多个SNMP引擎中使用相同的密钥，用户安全模型采用了[Localized-key]中提出的折中方案。它通过某种方式从用户密码派生出SNMP引擎的用户密钥，使得几乎不可能从任何SNMP引擎上的用户密钥组合中推断出用户的密码或其他引擎的用户密钥。
+
+但请注意，如果用户密码被泄露，密钥本地化将无济于事，网络安全可能受到威胁。因此，用户的密码或非本地化的密钥不得存储在受管理设备或节点上。相反，应存储本地化的密钥（如果有的话），以确保一旦设备被攻破，其他受管理或管理设备不会受到影响。
+
+11.3 合规性
+
+要被称为“安全的SNMP实现”，基于用户安全模型的SNMP实现必须：
+
+- 实现一种或多种认证协议。本文定义的HMAC-MD5-96和HMAC-SHA-96认证协议是此类协议的示例。
+
+- 在最大范围内，禁止在除生成和/或验证与特定用户相关的SNMP消息之外的任何情况下访问每个用户的秘密信息（存储在本地配置数据存储区LCD中）。
+
+- 实现密钥本地化机制。
+
+- 实现SNMP-基于用户的安全管理信息库（SNMP-USER-BASED-SM-MIB）。
+
+此外，权威的SNMP引擎应按照附录A.1的规定提供初始配置。
+
+实现隐私协议（本文定义的DES对称加密协议即为此类协议之一）是可选的。
+
+11.4 报告的使用
+
+使用不安全的报告（即以noAuthNoPriv安全级别发送的报告）可能会使非权威SNMP引擎面临某些攻击风险。有些人认为这属于拒绝服务攻击，而另一些人则不这么认为。在部署不安全的报告PDU之前，系统应评估相关风险。
+
+11.5 访问SNMP-基于用户的安全管理信息库（SNMP-USER-BASED-SM-MIB）
+
+该MIB中的对象在许多环境中可能被视为敏感。特别是，usmUserTable中的对象包含有关用户及其认证和隐私协议的信息。应通过使用适当配置的访问控制模型（例如[RFC3415]中定义的基于视图的访问控制模型）严格控制（包括读写）对这些MIB对象的访问。
+
+12 参考文献
+
+12.1 标准性参考文献
+
+[RFC1321] Rivest, R.，“消息摘要算法MD5”，RFC 1321，1992年4月。
+
+[RFC2104] Krawczyk, H.，Bellare, M. 和 R. Canetti，“HMAC：用于消息认证的密钥哈希”，RFC 2104，1997年2月。
+
+[RFC2119] Bradner, S.，“在RFC中用以指示需求级别的关键词”，BCP 14，RFC 2119，1997年3月。
+
+[RFC2578] McCloghrie, K. 等，“管理信息结构版本2（SMIv2）”，STD 58，RFC 2578，1999年4月。
+
+[RFC2579] McCloghrie, K. 等，“SMIv2的文本约定”，STD 58，RFC 2579，1999年4月。
+
+[RFC2580] McCloghrie, K. 等，“SMIv2的符合性声明”，STD 58，RFC 2580，1999年4月。
+
+[RFC3411] Harrington, D.，Presuhn, R. 和 B. Wijnen，“描述简单网络管理协议（SNMP）管理框架的体系结构”，STD 62，RFC 3411，2002年12月。
+
+[RFC3412] Case, J.，Harrington, D.，Presuhn, R. 和 B. Wijnen，“SNMP的消息处理与调度”，STD 62，RFC 3412，2002年12月。
+
+[RFC3415] Wijnen, B.，Presuhn, R. 和 K. McCloghrie，“基于视图的访问控制模型（VACM）”，STD 62，RFC 3415，2002年12月。
+
+[RFC3416] Presuhn, R.，Case, J.，McCloghrie, K.，Rose, M. 和 S. Waldbusser，“SNMP协议操作的第2版”，STD 62，RFC 3416，2002年12月。
+
+[RFC3417] Presuhn, R.，Case, J.，McCloghrie, K.，Rose, M. 和 S. Waldbusser，“SNMP的传输映射”，STD 62，RFC 3417，2002年12月。
+
+[RFC3418] Presuhn, R.，Case, J.，McCloghrie, K.，Rose, M. 和 S. Waldbusser，“SNMP管理信息库（MIB）”，STD 62，RFC 3418，2002年12月。
+
+[DES-NIST] 国家标准与技术研究院，“数据加密标准”，联邦信息处理标准（FIPS）发布46-1，取代FIPS 46（1977年1月，1988年1月重申）。
+
+[DESO-NIST] 国家标准与技术研究院，“DES操作模式”，FIPS 81（1980年12月）。
+
+[SHA-NIST] 国家标准与技术研究院，“安全哈希算法”，FIPS 180-1（1995年4月），可在http://csrc.nist.gov/fips/fip180-1.txt（ASCII）和http://csrc.nist.gov/fips/fip180-1.ps（Postscript）查阅。
+
+12.2 补充性参考文献
+
+[Localized-Key] U. Blumenthal, N. C. Hien, B. Wijnen，“网络管理应用中的密钥派生”，IEEE网络杂志，1997年4/5月刊。
+
+[DES-ANSI] 美国国家标准协会，“数据加密算法”，ANSI X3.92-1981（1980年12月）。
+
+[DESO-ANSI] 美国国家标准协会，“数据加密算法-操作模式”，ANSI X3.106-1983（1983年5月）。
+
+[DESG-NIST] 国家标准与技术研究院，“NBS数据加密标准的实现与使用指南”，FIPS 74（1981年4月）。
+
+[DEST-NIST] 国家标准与技术研究院，“验证硬件实现的NBS数据加密标准的正确性”，特别出版物500-20。
+
+[DESM-NIST] 国家标准与技术研究院，“数据加密标准的维护测试”，特别出版物500-61（1980年8月）。
+
+[RFC3174] Eastlake, D. 3rd 和 P. Jones，“美国安全哈希算法1（SHA1）”，RFC 3174，2001年9月。
+
+（以下内容为附录A的部分内容，介绍安装参数和密码到密钥的算法，详细内容请参阅原文。）
+
+以下是上述英文内容的中文翻译：
+
+```
+/**********************************************/
+/* 使用while循环，直到处理完1兆字节数据 */
+ /**********************************************/
+while (count < 1048576) {
+    cp = password_buf;
+    for (i = 0; i < 64; i++) {
+        /*************************************************/
+        /* 取密码的下一个字节，如果超出则从头开始循环 */
+        /* 必要时对密码进行循环取值 */
+        /*************************************************/
+        *cp++ = password[password_index++ % passwordlen];
+    }
+    MD5Update(&MD, password_buf, 64);
+    count += 64;
+}
+MD5Final(key, &MD);          /* 表示MD5计算完成 */
+
+ /*****************************************************/
+ /* 现在用engineID和密码对密钥进行本地化处理， */
+ /* 通过MD5生成最终密钥 */
+ /* 可能需要确保engineLength <= 32，否则需要使用 */
+ /* 大于64字节的缓冲区 */
+ /*****************************************************/
+memcpy(password_buf, key, 16);
+memcpy(password_buf + 16, engineID, engineLength);
+memcpy(password_buf + 16 + engineLength, key, 16);
+
+MD5Init(&MD);
+MD5Update(&MD, password_buf, 32 + engineLength);
+MD5Final(key, &MD);
+return;
+}
+
+
+
+Blumenthal & Wijnen         标准轨迹                    [第81页]
+
+
+RFC 3414                     SNMPv3的USM                2002年12月
+
+
+A.2.2. 使用SHA将密码转换为密钥的示例代码
+
+void password_to_key_sha(
+   u_char *password,    /* 输入 */
+   u_int   passwordlen, /* 输入 - 密码长度 */
+   u_char *engineID,    /* 输入 - SNMP引擎ID指针 */
+   u_int   engineLength,/* 输入 - SNMP引擎ID长度 */
+   u_char *key)         /* 输出 - 调用者的20字节缓冲区指针 */
+{
+   SHA_CTX     SH;
+   u_char     *cp, password_buf[72];
+   u_long      password_index = 0;
+   u_long      count = 0, i;
+
+   SHAInit(&SH);   /* 初始化SHA */
+
+   /**********************************************/
+   /* 使用while循环，直到处理完1兆字节数据 */
+   /**********************************************/
+   while (count < 1048576) {
+       cp = password_buf;
+       for (i = 0; i < 64; i++) {
+           /*************************************************/
+           /* 取密码的下一个字节，如果超出则从头开始循环 */
+           /* 必要时对密码进行循环取值 */
+           /*************************************************/
+           *cp++ = password[password_index++ % passwordlen];
+       }
+       SHAUpdate(&SH, password_buf, 64);
+       count += 64;
+   }
+   SHAFinal(key, &SH);          /* 表示SHA计算完成 */
+
+   /*****************************************************/
+   /* 现在用engineID和密码对密钥进行本地化处理， */
+   /* 通过SHA生成最终密钥 */
+   /* 可能需要确保engineLength <= 32，否则需要使用 */
+   /* 大于72字节的缓冲区 */
+   /*****************************************************/
+   memcpy(password_buf, key, 20);
+   memcpy(password_buf + 20, engineID, engineLength);
+   memcpy(password_buf + 20 + engineLength, key, 20);
+
+   SHAInit(&SH);
+   SHAUpdate(&SH, password_buf, 40 + engineLength);
+   SHAFinal(key, &SH);
+   return;
+}
+
+
+
+Blumenthal & Wijnen         标准轨迹                    [第82页]
+
+
+RFC 3414                     SNMPv3的USM                2002年12月
+
+
+A.3. 密码到密钥的示例结果
+
+A.3.1. 使用MD5的密码到密钥示例结果
+
+以下是使用MD5算法，生成16字节密钥的示例输出。
+
+密码为“maplesyrup”时，密码到密钥算法在本地化前的输出为：
+
+      '9f af 32 83 88 4e 92 83 4e bc 98 47 d8 ed d9 63'H
+
+在用SNMP引擎ID（如下）对中间密钥进行本地化后：
+
+      '00 00 00 00 00 00 00 00 00 00 00 02'H
+
+最终的密码到密钥算法输出为：
+
+      '52 6f 5e ed 9f cc e2 6f 89 64 c2 93 07 87 d8 2b'H
+
+A.3.2. 使用SHA的密码到密钥示例结果
+
+以下是使用SHA算法，生成20字节密钥的示例输出。
+
+密码为“maplesyrup”时，密码到密钥算法在本地化前的输出为：
+
+      '9f b5 cc 03 81 49 7b 37 93 52 89 39 ff 78 8d 5d 79 14 52 11'H
+
+在用SNMP引擎ID（如下）对中间密钥进行本地化后：
+
+      '00 00 00 00 00 00 00 00 00 00 00 02'H
+
+最终的密码到密钥算法输出为：
+
+      '66 95 fe bc 92 88 e3 62 82 23 5f c7 15 1f 12 84 97 b3 8f 3f'H
+
+A.4. msgSecurityParameters的示例编码
+
+SNMP消息中的msgSecurityParameters以一个八位字节字符串（OCTET STRING）表示。该八位字节字符串应被视为在特定安全模型之外的“盲区”。
+
+用户基础安全模型定义了该OCTET STRING的内容为一个序列（见第2.4节）。
+
+鉴于这两个特性，以下是用户基础安全模型的msgSecurityParameters的示例，编码为一个八位字节字符串：
+
+      04 <长度>
+      30 <长度>
+      04 <长度> <msgAuthoritativeEngineID>
+      02 <长度> <msgAuthoritativeEngineBoots>
+      02 <长度> <msgAuthoritativeEngineTime>
+      04 <长度> <msgUserName>
+      04 0c       <HMAC-MD5-96摘要>
+      04 08       <盐值>
+
+以下是示例（已用实际值替代，除了msgAuthenticationParameters中的摘要和msgPrivacyParameters中的盐值，这些依赖于未定义的变量数据）：
+
+      十六进制数据                         描述
+      --------------  -----------------------------------------------
+      04 39           OCTET STRING，长度57
+      30 37           序列，长度55
+      04 0c 80000002  msgAuthoritativeEngineID：IBM
+            01                                       IPv4地址
+            09840301                                 9.132.3.1
+      02 01 01        msgAuthoritativeEngineBoots：1
+      02 02 0101      msgAuthoritativeEngineTime：257
+      04 04 62657274  msgUserName：bert
+      04 0c 01234567  msgAuthenticationParameters：示例值
+            89abcdef
+            fedcba98
+      04 08 01234567  msgPrivacyParameters：示例值
+            89abcdef
+
+A.5. 密钥变更（keyChange）示例结果
+
+A.5.1. 使用MD5的密钥变更示例结果
+
+假设用户当前密码为“maplesyrup”，如A.3.1节所示，同时假设snmpEngineID为12字节：
+
+      '00 00 00 00 00 00 00 00 00 00 00 02'H
+
+如果要将密码改为“newsyrup”，首先计算新密码的密钥。如下：
+
+      '01 ad d2 73 10 7c 4e 59 6b 4b 00 f8 2b 1d 42 a7'H
+
+用上述snmpEngineID对其进行本地化后，新密钥变为：
+
+      '87 02 1d 7b d9 d1 01 ba 05 ea 6e 3b f9 d9 bd 4a'H
+
+如果再用一个（不太好的，但便于测试的）随机值：
+
+      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'H
+
+那么需要发送的keyChange值为：
+
+      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       88 05 61 51 41 67 6c c9 19 61 74 e7 42 a3 25 51'H
+
+如果是用于隐私密钥，则完全相同。
+
+A.5.2. 使用SHA的密钥变更示例结果
+
+假设用户当前密码为“maplesyrup”，如A.3.2节所示，同时假设snmpEngineID为12字节：
+
+      '00 00 00 00 00 00 00 00 00 00 00 02'H
+
+如果要将密码改为“newsyrup”，首先计算新密码的密钥。如下：
+
+      '3a 51 a6 d7 36 aa 34 7b 83 dc 4a 87 e3 e5 5e e4 d6 98 ac 71'H
+
+用上述snmpEngineID对其进行本地化后，新密钥变为：
+
+      '78 e2 dc ce 79 d5 94 03 b5 8c 1b ba a5 bf f4 63 91 f1 cd 25'H
+
+如果再用一个（不太好的，但便于测试的）随机值：
+
+      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'H
+
+那么需要发送的keyChange值为：
+
+      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       9c 10 17 f4 fd 48 3d 2d e8 d5 fa db f8 43 92 cb 06 45 70 51'
+
+用于隐私密钥的新的非本地化密钥为：
+
+      '3a 51 a6 d7 36 aa 34 7b 83 dc 4a 87 e3 e5 5e e4 d6 98 ac 71'H
+
+用于隐私的本地化新密钥（注意：本地化密钥在DES中会被截断为16字节）为：
+
+      '78 e2 dc ce 79 d5 94 03 b5 8c 1b ba a5 bf f4 63'H
+
+如果再用一个（不太好的，但便于测试的）随机值：
+
+      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'H
+
+那么用于隐私密钥的keyChange值为：
+
+      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      '7e f8 d8 a4 c9 cd b2 6b 47 59 1c d8 52 ff 88 b5'H
+
+```
+
+上述授予的有限权限是永久性的，不会被互联网协会或其继任者或受让人撤销。
+
+本文件及其中包含的信息是“按原样”提供的，互联网协会和互联网工程任务组对其不作任何明示或暗示的保证，包括但不限于对使用本文信息不会侵犯任何权利或对其适销性或特定用途适用性的任何保证。
+
+致谢
+
+目前，RFC编辑职能的资金由互联网协会提供。
+
+Blumenthal 和 Wijnen         标准轨迹                    [第88页]

@@ -1,0 +1,734 @@
+# RFC 3418 中文翻译 (stub)
+# 原文文件: ../../rfcs/RFCs3001-3500/rfc3418.txt
+
+网络工作组                            本版本编辑：
+意见征求稿：3418                                    R. Presuhn
+标准：62                                               BMC软件公司
+废止：1907                             之前版本作者：
+类别：标准轨道                                        J. Case
+                                                     SNMP研究公司
+                                                           K. McCloghrie
+                                                     思科系统公司
+                                                                 M. Rose
+                                            Dover Beach咨询公司
+                                                           S. Waldbusser
+                                          国际网络服务公司
+                                                           2002年12月
+
+
+               简单网络管理协议（SNMP）的管理信息库（MIB）
+
+本备忘录的状态
+
+   本文件为互联网社区制定的互联网标准轨道协议，旨在征求讨论和改进建议。请参阅当前版本的《互联网官方协议标准》（STD 1）以了解该协议的标准化状态和现状。本备忘录的分发不受限制。
+
+版权声明
+
+   版权所有（C）互联网协会（2002年）。保留所有权利。
+
+摘要
+
+   本文件定义了描述SNMP实体行为的管理对象。本文件取代RFC 1907，即“版本2的简单网络管理协议（SNMPv2）管理信息库”。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第1页]
+
+
+RFC 3418                      SNMP的MIB                 2002年12月
+
+
+目录
+
+   1. 互联网标准管理框架 ....................................    2
+   2. 定义 ....................................................    2
+   3. 知识产权声明 ............................................   20
+   4. 致谢 ....................................................   21
+   5. 安全考虑 ................................................   22
+   6. 参考文献 ................................................   23
+   6.1. 规范性参考文献 ......................................   23
+   6.2. 资料性参考文献 ......................................   24
+   7. 与RFC 1907的变更 .......................................   24
+   8. 编辑联系方式 ............................................   25
+   9. 完整版权声明 ............................................   26
+
+1. 互联网标准管理框架
+
+   有关描述当前互联网标准管理框架的详细文档，请参阅RFC 3410 [RFC3410]的第7节。
+
+   管理对象通过一个虚拟信息存储区——管理信息库（MIB）进行访问。MIB对象通常通过简单网络管理协议（SNMP）访问。
+
+   MIB中的对象是使用管理信息结构（SMI）定义的机制进行定义的。本备忘录指定了一个符合SMIv2的MIB模块，该版本在STD 58中描述，包括RFC 2578 [RFC2578]、RFC 2579 [RFC2579]和RFC 2580 [RFC2580]。
+
+   本文件的目的是定义描述SNMP实体行为的管理对象，正如SNMP架构STD 62 [RFC3411]中所定义。
+
+   本文中的关键词“必须（MUST）”、“不得（MUST NOT）”、“需要（REQUIRED）”、“应（SHALL）”、“不得（SHALL NOT）”、“建议（SHOULD）”、“不建议（SHOULD NOT）”、“推荐（RECOMMENDED）”、“可以（MAY）”和“可选（OPTIONAL）”的解释遵循BCP 14 [RFC2119]的规定。
+
+2. 定义
+
+   SNMPv2-MIB DEFINITIONS ::= BEGIN
+
+   进口
+       MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE,
+       TimeTicks, Counter32, snmpModules, mib-2
+           来自 SNMPv2-SMI
+       DisplayString, TestAndIncr, TimeStamp
+           来自 SNMPv2-TC
+       MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+           来自 SNMPv2-CONF;
+
+   snmpMIB 模块标识
+       最后更新 "200210160000Z"
+       组织 "IETF SNMPv3工作组"
+       联系信息
+               "工作组电子邮箱：snmpv3@lists.tislabs.com
+                订阅：snmpv3-request@lists.tislabs.com
+
+                联合主席：Russ Mundy
+                            Network Associates Laboratories
+                邮寄地址：15204 Omega Drive, Suite 300
+                            Rockville, MD 20850-4601
+                            美国
+                电子邮箱：mundy@tislabs.com
+                电话：+1 301 947-7107
+
+                联合主席：David Harrington
+                            Enterasys Networks
+                邮寄地址：35 Industrial Way
+                            P. O. Box 5005
+                            Rochester, NH 03866-5005
+                            美国
+                电子邮箱：dbh@enterasys.com
+                电话：+1 603 337-2614
+
+                编辑：Randy Presuhn
+                            BMC Software, Inc.
+                邮寄地址：2141 North First Street
+                            San Jose, CA 95131
+                            美国
+                电子邮箱：randy_presuhn@bmc.com
+                电话：+1 408 546-1006"
+       描述
+               "SNMP实体的MIB模块。
+
+                版权所有（C）互联网协会（2002）。本版本的MIB模块是RFC 3418的一部分；
+                详见RFC本身的完整法律声明。
+               "
+       版本      "200210160000Z"
+       描述
+               "本MIB模块的此版本作为RFC 3418发布。"
+       版本      "199511090000Z"
+       描述
+               "本MIB模块的此版本作为RFC 1907发布。"
+       版本      "199304010000Z"
+       描述
+               "本MIB模块的初始版本作为RFC 1450发布。"
+       ::= { snmpModules 1 }
+
+   snmpMIB对象标识符 ::= { snmpMIB 1 }
+
+   --  ::= { snmpMIBObjects 1 }  该OID已废弃
+   --  ::= { snmpMIBObjects 2 }  该OID已废弃
+   --  ::= { snmpMIBObjects 3 }  该OID已废弃
+
+   -- 系统组
+   --
+   -- 所有管理系统共有的一组对象。
+
+   system   OBJECT IDENTIFIER ::= { mib-2 1 }
+
+   sysDescr OBJECT-TYPE
+       语法      DisplayString (大小 (0..255))
+       最大访问  只读
+       状态      当前
+       描述
+               "实体的文本描述。该值应包括系统硬件类型、软件操作系统和网络软件的全名及版本标识。"
+       ::= { system 1 }
+
+   sysObjectID OBJECT-TYPE
+       语法      OBJECT IDENTIFIER
+       最大访问  只读
+       状态      当前
+       描述
+               "供应商对实体中网络管理子系统的权威标识。该值在SMI企业子树（1.3.6.1.4.1）内分配，提供一种简便且明确的方式来判断被管理的“设备类型”。例如，如果供应商“Flintstones, Inc.”被分配了子树1.3.6.1.4.1.424242，则可以为其“Fred路由器”分配标识符1.3.6.1.4.1.424242.1.1。"
+       ::= { system 2 }
+
+   sysUpTime OBJECT-TYPE
+
+
+
+Presuhn 等人             标准轨道                     [第4页]
+
+
+RFC 3418                      SNMP的MIB                 2002年12月
+
+
+       语法      TimeTicks
+       最大访问  只读
+       状态      当前
+       描述
+               "自系统的网络管理部分上次初始化以来的时间（以百分之一秒为单位）。"
+       ::= { system 3 }
+
+   sysContact OBJECT-TYPE
+       语法      DisplayString (大小 (0..255))
+       最大访问  可读写
+       状态      当前
+       描述
+               "此管理节点联系人的文本标识，以及联系方式。如果没有已知的联系信息，则值为空字符串。"
+       ::= { system 4 }
+
+   sysName OBJECT-TYPE
+       语法      DisplayString (大小 (0..255))
+       最大访问  可读写
+       状态      当前
+       描述
+               "为此管理节点分配的管理名称。按惯例，此为节点的完全限定域名。如果未知，则值为空字符串。"
+       ::= { system 5 }
+
+   sysLocation OBJECT-TYPE
+       语法      DisplayString (大小 (0..255))
+       最大访问  可读写
+       状态      当前
+       描述
+               "此节点的物理位置（例如“电话机间，三楼”）。如果位置未知，则值为空字符串。"
+       ::= { system 6 }
+
+   sysServices OBJECT-TYPE
+       语法      INTEGER (0..127)
+       最大访问  只读
+       状态      当前
+       描述
+               "指示此实体可能提供的服务集合的值。该值是一个总和。
+
+               该总和最初为零。然后，对于范围1到7中的每一层L，该节点为其执行事务时，将2的（L-1）次方加到总和中。例如，只执行路由功能的节点，其值为4（2^(3-1)）。相反，提供应用服务的主机节点，其值为72（2^(4-1) + 2^(7-1)）。在互联网协议族的上下文中，值应按如下方式计算：
+
+                    层级      功能
+                      1        物理层（如中继器）
+                      2        数据链路/子网（如桥）
+                      3        互联网（支持IP）
+                      4        端到端（支持TCP）
+                      7        应用（支持SMTP）
+
+               对于包括OSI协议的系统，也可以计数第5和第6层。"
+       ::= { system 7 }
+
+   -- 对象资源信息
+   --
+   -- 描述SNMP实体支持的（静态和动态可配置的）各种MIB模块的对象集合。
+
+   sysORLastChange OBJECT-TYPE
+       语法     TimeStamp
+       最大访问  只读
+       状态      当前
+       描述
+               "在任何sysORID实例的状态或值最近一次变化时的sysUpTime值。"
+       ::= { system 8 }
+
+   sysORTable OBJECT-TYPE
+       语法     SEQUENCE OF SysOREntry
+       最大访问  不可访问
+       状态      当前
+       描述
+               "列出作为命令响应者的本地SNMP应用在各种MIB模块方面的能力的（概念性）表。支持动态配置的SNMP实体，其支持的MIB模块的概念行数会动态变化。"
+       ::= { system 9 }
+
+
+
+Presuhn 等人             标准轨道                     [第6页]
+
+
+RFC 3418                      SNMP的MIB                 2002年12月
+
+
+   sysOREntry OBJECT-TYPE
+       语法     SysOREntry
+       最大访问  不可访问
+       状态      当前
+       描述
+               "sysORTable中的一行（概念性行）。"
+       索引      { sysORIndex }
+       ::= { sysORTable 1 }
+
+   SysOREntry ::= SEQUENCE {
+       sysORIndex     INTEGER,
+       sysORID        OBJECT IDENTIFIER,
+       sysORDescr     DisplayString,
+       sysORUpTime    TimeStamp
+   }
+
+   sysORIndex OBJECT-TYPE
+       语法     INTEGER (1..2147483647)
+       最大访问  不可访问
+       状态      当前
+       描述
+               "用于标识sysORTable中列对象实例的辅助变量。"
+       ::= { sysOREntry 1 }
+
+   sysORID OBJECT-TYPE
+       语法     OBJECT IDENTIFIER
+       最大访问  只读
+       状态      当前
+       描述
+               "关于本地SNMP应用作为命令响应者支持的各种MIB模块的能力声明的权威标识。"
+       ::= { sysOREntry 2 }
+
+   sysORDescr OBJECT-TYPE
+       语法     DisplayString
+       最大访问  只读
+       状态      当前
+       描述
+               "由对应的sysORID实例标识的能力的文本描述。"
+       ::= { sysOREntry 3 }
+
+   sysORUpTime OBJECT-TYPE
+       语法     TimeStamp
+       最大访问  只读
+       状态      当前
+       描述
+               "此概念行最后实例化时的sysUpTime值。"
+       ::= { sysOREntry 4 }
+
+
+   -- SNMP组
+   --
+   -- 提供SNMP实体的基本仪表和控制的一组对象。
+
+   snmp     OBJECT IDENTIFIER ::= { mib-2 11 }
+
+   snmpInPkts OBJECT-TYPE
+       语法      Counter32
+       最大访问  只读
+       状态      当前
+       描述
+               "从传输服务传送到SNMP实体的消息总数。"
+       ::= { snmp 1 }
+
+   snmpInBadVersions OBJECT-TYPE
+       语法      Counter32
+       最大访问  只读
+       状态      当前
+       描述
+               "传送到SNMP实体的SNMP消息总数中，版本不支持的消息数。"
+       ::= { snmp 3 }
+
+   snmpInBadCommunityNames OBJECT-TYPE
+       语法      Counter32
+       最大访问  只读
+       状态      当前
+       描述
+              "传送到SNMP实体的基于社区的SNMP消息（例如SNMPv1），使用了未知的社区名。还包括使用除社区名匹配外的检查（例如，验证消息是否来自允许使用特定社区名的传输地址）进行身份验证的实现，可能会在此值中包括未通过额外检查的消息数。强烈建议
+
+（以下内容省略，后续对象定义类似，描述SNMP的各种统计计数和控制参数）
+
+SNMP代理丢弃计数 OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：当前
+    描述：
+        “被静默丢弃的确认类PDUs（如GetRequest-PDUs、GetNextRequest-PDUs、
+        GetBulkRequest-PDUs、SetRequest-PDUs和InformRequest-PDUs）总数，
+        这些消息被送达SNMP实体，但由于向代理目标传输（可能经过翻译）消息失败（
+        除了超时之外的方式），导致无法返回响应类PDU（如Response-PDU）。”
+    ::= { snmp 32 }
+
+-- 通知相关信息
+--
+-- 一组对象，允许支持通知发起应用的SNMP实体配置为生成SNMPv2-Trap-PDUs。
+
+snmpTrap OBJECT IDENTIFIER ::= { snmpMIBObjects 4 }
+
+snmpTrapOID OBJECT-TYPE
+    语法：OBJECT IDENTIFIER
+    最大访问权限：可通知访问
+    状态：当前
+    描述：
+        “当前正在发送的通知的权威标识。此变量作为每个SNMPv2-Trap-PDU和InformRequest-PDU中的第二个varbind出现。”
+    ::= { snmpTrap 1 }
+
+--  ::= { snmpTrap 2 }  此OID已废弃
+
+snmpTrapEnterprise OBJECT-TYPE
+    语法：OBJECT IDENTIFIER
+    最大访问权限：可通知访问
+    状态：当前
+    描述：
+        “与当前正在发送的Trap相关的企业的权威标识。当SNMP代理映射RFC1157的Trap-PDU到SNMPv2-Trap-PDU时，
+        此变量作为最后一个varbind出现。”
+    ::= { snmpTrap 3 }
+
+--  ::= { snmpTrap 4 }  此OID已废弃
+
+-- 常用Trap类型
+
+snmpTraps OBJECT IDENTIFIER ::= { snmpMIBObjects 5 }
+
+coldStart NOTIFICATION-TYPE
+    状态：当前
+    描述：
+        “ColdStart Trap表示SNMP实体（支持通知发起应用）正在重新初始化，可能已更改其配置。”
+    ::= { snmpTraps 1 }
+
+warmStart NOTIFICATION-TYPE
+    状态：当前
+    描述：
+        “WarmStart Trap表示SNMP实体（支持通知发起应用）正在重新初始化，但其配置未变。”
+    ::= { snmpTraps 2 }
+
+-- 注意：linkDown NOTIFICATION-TYPE ::= { snmpTraps 3 }
+-- 和 linkUp NOTIFICATION-TYPE ::= { snmpTraps 4 }
+-- 在RFC 2863 [RFC2863]中定义。
+
+authenticationFailure NOTIFICATION-TYPE
+    状态：当前
+    描述：
+        “认证失败Trap表示SNMP实体收到未正确认证的协议消息。虽然所有SNMP实体实现可能都能生成此Trap，
+        但snmpEnableAuthenTraps对象指示是否会生成此Trap。”
+    ::= { snmpTraps 5 }
+
+-- 注意：egpNeighborLoss通知在RFC 1213中定义为 { snmpTraps 6 }
+
+-- set操作组
+--
+-- 一组对象，允许多个协作的命令生成应用协调使用set操作。
+
+snmpSet OBJECT IDENTIFIER ::= { snmpMIBObjects 6 }
+
+snmpSetSerialNo OBJECT-TYPE
+    语法：TestAndIncr
+    最大访问权限：可读写
+    状态：当前
+    描述：
+        “用于协作的建议锁，帮助多个命令生成应用协调使用SNMP set操作。
+        此对象用于粗粒度的协调。为了实现细粒度的协调，可以在每个MIB组内定义一个或多个类似的对象，视情况而定。”
+    ::= { snmpSet 1 }
+
+-- 合规性信息
+
+snmpMIBConformance OBJECT IDENTIFIER ::= { snmpMIB 2 }
+
+snmpMIBCompliances OBJECT IDENTIFIER ::= { snmpMIBConformance 1 }
+snmpMIBGroups OBJECT IDENTIFIER ::= { snmpMIBConformance 2 }
+
+-- 合规声明
+
+--  ::= { snmpMIBCompliances 1 }  此OID已废弃
+snmpBasicCompliance MODULE-COMPLIANCE
+    状态：已废弃
+    描述：
+        “实现SNMPv2 MIB的SNMPv2实体的合规声明。
+        此合规声明由snmpBasicComplianceRev2取代。”
+    模块：-- 此模块
+        必须-组 { snmpGroup, snmpSetGroup, systemGroup, snmpBasicNotificationsGroup }
+        组：snmpCommunityGroup
+        描述：
+            “此组对于支持基于社区的认证的SNMPv2实体是强制的。”
+    ::= { snmpMIBCompliances 2 }
+
+snmpBasicComplianceRev2 MODULE-COMPLIANCE
+    状态：当前
+    描述：
+        “实现此MIB模块的SNMP实体的合规声明。”
+    模块：-- 此模块
+        必须-组 { snmpGroup, snmpSetGroup, systemGroup, snmpBasicNotificationsGroup }
+        组：snmpCommunityGroup
+        描述：
+            “此组对于支持基于社区的认证的SNMP实体是强制的。”
+        组：snmpWarmStartNotificationGroup
+        描述：
+            “支持命令响应应用、能够重新初始化自身且配置未变的SNMP实体必须包含此组。”
+    ::= { snmpMIBCompliances 3 }
+
+-- 合规性单位
+
+--  ::= { snmpMIBGroups 1 }  此OID已废弃
+--  ::= { snmpMIBGroups 2 }  此OID已废弃
+--  ::= { snmpMIBGroups 3 }  此OID已废弃
+
+--  ::= { snmpMIBGroups 4 }  此OID已废弃
+
+snmpGroup OBJECT-GROUP
+    OBJECTS：{ snmpInPkts, snmpInBadVersions, snmpInASNParseErrs, snmpSilentDrops, snmpProxyDrops, snmpEnableAuthenTraps }
+    状态：当前
+    描述：
+        “提供SNMP实体基本监控和控制的一组对象。”
+    ::= { snmpMIBGroups 8 }
+
+snmpCommunityGroup OBJECT-GROUP
+    OBJECTS：{ snmpInBadCommunityNames, snmpInBadCommunityUses }
+    状态：当前
+    描述：
+        “提供支持基于社区认证的SNMP实体的基本监控的一组对象。”
+    ::= { snmpMIBGroups 9 }
+
+snmpSetGroup OBJECT-GROUP
+    OBJECTS：{ snmpSetSerialNo }
+    状态：当前
+    描述：
+        “一组对象，允许多个协作的命令生成应用协调使用set操作。”
+    ::= { snmpMIBGroups 5 }
+
+systemGroup OBJECT-GROUP
+    OBJECTS：{ sysDescr, sysObjectID, sysUpTime, sysContact, sysName, sysLocation, sysServices, sysORLastChange, sysORID, sysORUpTime, sysORDescr }
+    状态：当前
+    描述：
+        “系统组定义所有被管理系统共有的对象。”
+    ::= { snmpMIBGroups 6 }
+
+snmpBasicNotificationsGroup NOTIFICATION-GROUP
+    通知：{ coldStart, authenticationFailure }
+    状态：当前
+    描述：
+        “支持命令响应应用的SNMP实体实现的基本通知组。”
+    ::= { snmpMIBGroups 7 }
+
+snmpWarmStartNotificationGroup NOTIFICATION-GROUP
+    通知：{ warmStart }
+    状态：当前
+    描述：
+        “支持命令响应应用的SNMP实体的附加通知，若其能重新初始化自身且配置未变。”
+    ::= { snmpMIBGroups 11 }
+
+snmpNotificationGroup OBJECT-GROUP
+    OBJECTS：{ snmpTrapOID, snmpTrapEnterprise }
+    状态：当前
+    描述：
+        “这些对象是支持通知发起应用的实体所必需的。”
+    ::= { snmpMIBGroups 12 }
+
+-- RFC 1213中的定义因本MIB中包含了其子集而废弃
+
+snmpOutPkts OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “从SNMP协议实体传递到传输服务的SNMP消息总数。”
+    ::= { snmp 2 }
+
+-- { snmp 7 } 未使用
+
+snmpInTooBigs OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “传递到SNMP协议实体且error-status字段值为'tooBig'的SNMP PDU总数。”
+    ::= { snmp 8 }
+
+snmpInNoSuchNames OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “传递到SNMP协议实体且error-status字段值为'noSuchName'的SNMP PDU总数。”
+    ::= { snmp 9 }
+
+snmpInBadValues OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “传递到SNMP协议实体且error-status字段值为'badValue'的SNMP PDU总数。”
+    ::= { snmp 10 }
+
+snmpInReadOnlys OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “传递到SNMP协议实体且error-status字段值为'readOnly'的有效SNMP PDU总数。注意，生成包含'readOnly'值的SNMP PDU是协议错误，因此此对象用于检测SNMP实现中的错误。”
+    ::= { snmp 11 }
+
+snmpInGenErrs OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “传递到SNMP协议实体且error-status字段值为'genErr'的SNMP PDU总数。”
+    ::= { snmp 12 }
+
+snmpInTotalReqVars OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “成功检索的MIB对象总数（通过接收有效的SNMP Get-Request和Get-Next PDUs实现）。”
+    ::= { snmp 13 }
+
+snmpInTotalSetVars OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “成功被SNMP协议实体修改的MIB对象总数（通过接收有效的SNMP Set-Request PDUs实现）。”
+    ::= { snmp 14 }
+
+snmpInGetRequests OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “被SNMP协议实体接受和处理的Get-Request PDUs总数。”
+    ::= { snmp 15 }
+
+snmpInGetNexts OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “被SNMP协议实体接受和处理的Get-Next PDUs总数。”
+    ::= { snmp 16 }
+
+snmpInSetRequests OBJECT-TYPE
+    语法：Counter32
+    最大访问权限：只读
+    状态：已废弃
+    描述：
+        “被SNMP协议实体接受和处理的Set-Request PDUs总数。”
+    ::= { snmp 17 }
+
+-- 其他类似的统计对象（如GetResponses、Traps等）也以相似方式定义，均为已废弃状态。
+
+END
+
+国际互联网工程任务组（IETF）不对本文件中描述的技术的实施或使用所涉及的任何知识产权或其他权利的有效性或范围发表任何立场，也不对任何此类权利的许可是否可用作出任何声明；也不表示其已努力识别任何此类权利。关于标准追踪和标准相关文档中权利的程序信息，可以在BCP-11中找到。任何为公开发布而提出的权利声明的副本，以及关于将提供的许可保证或为实现者或用户获取此类专有权利的通用许可或权限的尝试结果，都可以从IETF秘书处获得。
+
+IETF欢迎任何相关方就可能涵盖实践本标准所需技术的版权、专利或专利申请或其他专有权利提出意见。请将相关信息提交给IETF执行董事。
+
+Presuhn 等人             标准追踪                     [第20页]
+
+RFC 3418                      SNMP的管理信息库（MIB）             2002年12月
+
+4. 致谢
+
+本文件由SNMPv3工作组完成。特别感谢以下工作组成员的贡献：
+
+- Randy Bush
+- Jeffrey D. Case
+- Mike Daniele
+- Rob Frye
+- Lauren Heintz
+- Keith McCloghrie
+- Russ Mundy
+- David T. Perkins
+- Randy Presuhn
+- Aleksey Romanov
+- Juergen Schoenwaelder
+- Bert Wijnen
+
+由Randy Presuhn编辑的本版本，最初基于由以下成员组成的设计团队的工作：
+
+- Jeffrey D. Case
+- Keith McCloghrie
+- David T. Perkins
+- Randy Presuhn
+- Juergen Schoenwaelder
+
+此前由Keith McCloghrie编辑的版本，得到了四位主要贡献者的重大工作支持：
+
+- Jeffrey D. Case
+- Keith McCloghrie
+- Marshall T. Rose
+- Steven Waldbusser
+
+此外，还感谢SNMPv2工作组对之前版本的贡献。特别感谢以下人员的贡献：
+
+- Alexander I. Alten
+- Dave Arneson
+- Uri Blumenthal
+- Doug Book
+- Kim Curran
+- Jim Galvin
+- Maria Greene
+- Iain Hanson
+- Dave Harrington
+- Nguyen Hien
+- Jeff Johnson
+- Michael Kornegay
+- Deirdre Kostick
+- David Levi
+- Daniel Mahoney
+- Bob Natale
+- Brian O'Keefe
+- Andrew Pearson
+- Dave Perkins
+- Randy Presuhn
+- Aleksey Romanov
+- Shawn Routhier
+- Jon Saperia
+- Juergen Schoenwaelder
+- Bob Stewart
+- Kaj Tesink
+- Glenn Waters
+- Bert Wijnen
+
+5. 安全考虑
+
+本MIB中定义了多个管理对象，这些对象的最大访问权限为读写。在某些网络环境中，这些对象可能被视为敏感或易受攻击。未采取适当保护措施支持SET操作，可能对网络运行产生负面影响。
+
+单独使用SNMPv1环境并不安全。即使网络本身是安全的（例如使用IPSec），也无法控制在安全网络中谁有权限访问和执行GET/SET（读取/更改）操作。
+
+建议实现者考虑SNMPv3框架提供的安全特性，特别推荐使用基于用户的安全模型STD 62（RFC 3414）和基于视图的访问控制模型STD 62（RFC 3415）。
+
+由此，客户或用户有责任确保授予访问本MIB实例的SNMP实体已正确配置，只允许具有合法权限的主体（用户）进行GET或SET操作。
+
+6. 参考文献
+
+6.1. 必要性参考文献
+
+- [RFC2119] Bradner, S.，“用于指示RFC中需求级别的关键词”，BCP 14，RFC 2119，1997年3月。
+- [RFC2578] McCloghrie, K. 等，“管理信息结构版本2（SMIv2）”，STD 58，RFC 2578，1999年4月。
+- [RFC2579] McCloghrie, K. 等，“SMIv2的文本约定”，STD 58，RFC 2579，1999年4月。
+- [RFC2580] McCloghrie, K. 等，“SMIv2的符合性声明”，STD 58，RFC 2580，1999年4月。
+- [RFC3411] Harrington, D. 等，“描述简单网络管理协议（SNMP）管理框架的体系结构”，STD 62，RFC 3411，2002年12月。
+- [RFC3414] Blumenthal, U. 和 Wijnen, B.，“SNMPv3的基于用户的安全模型（USM）”，STD 62，RFC 3414，2002年12月。
+- [RFC3415] Wijnen, B. 等，“SNMP的基于视图的访问控制模型（VACM）”，STD 62，RFC 3415，2002年12月。
+
+6.1. 其他参考文献
+
+- [RFC1157] Case, J. 等，“简单网络管理协议”，STD 15，RFC 1157，1990年5月。
+- [RFC1213] McCloghrie, K. 和 M. Rose，“TCP/IP互联网管理信息库：MIB-II”，STD 16，RFC 1213，1991年3月。
+- [RFC2863] McCloghrie, K. 和 F. Kastenholz，“接口组MIB”，RFC 2863，2000年6月。
+- [RFC3410] Case, J. 等，“互联网标准管理框架的介绍和适用性声明”，RFC 3410，2002年12月。
+
+7. 与RFC 1907的变更
+
+本节列出自RFC 1907以来的主要变更内容，包括修正错别字、更新版权日期、修改标题、替换引言、更新参考文献、修正特定字段描述、调整安全描述、更新模块信息、增加安全考虑、引入通知组和对象组定义、修正描述中的错别字、调整示例内容、添加摘要、废弃旧的合规性声明、更新工作组联系方式等。
+
+8. 编辑联系方式
+
+Randy Presuhn  
+BMC Software, Inc.  
+2141 North First Street  
+San Jose, CA 95131  
+美国
+
+电话：+1 408 546 1006  
+电子邮箱：randy_presuhn@bmc.com
+
+9. 完整版权声明
+
+版权所有（C）互联网协会（2002年）。保留所有权利。
+
+本文件及其翻译件可被复制、提供给他人，亦可对其进行评论、说明或协助实现的派生作品进行复制、出版和分发，且不受任何限制，但须在所有此类副本和派生作品上包含上述版权声明和本声明。除非为制定互联网标准的目的（遵循互联网标准流程中的版权程序）或将其翻译成非英语语言，否则不得以任何方式修改本文件（如删除版权声明或提及互联网协会或其他互联网组织的内容）。
+
+上述授权为永久性，不会被互联网协会或其继任者或受让人撤销。
+
+本文件及其中包含的信息按“现状”提供，互联网协会和互联网工程任务组不对其作任何明示或暗示的保证，包括但不限于其使用不会侵犯任何权利或具有适销性和特定用途适用性的任何隐含保证。
+
+致谢
+
+本RFC编辑工作由互联网协会目前提供资金支持。

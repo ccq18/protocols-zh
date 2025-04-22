@@ -1,0 +1,854 @@
+# RFC 3415 中文翻译 (stub)
+# 原文文件: ../../rfcs/RFCs3001-3500/rfc3415.txt
+
+网络工作组                                          B. Wijnen
+意见请求编号：3415                          Lucent Technologies
+标准：62                                                      R. Presuhn
+废止：2575                                       BMC Software, Inc.
+类别：标准轨道                                  K. McCloghrie
+                                                    思科系统公司
+                                                          2002年12月
+
+
+             简单网络管理协议（SNMP）的基于视图的访问控制模型（VACM）
+
+本备忘录的状态
+
+   本文档为互联网社区制定了一个互联网标准轨道协议，旨在征求讨论和改进建议。请参阅最新版本的《互联网官方协议标准》（STD 1），了解该协议的标准化状态和现行情况。本文档的分发不受限制。
+
+版权声明
+
+   版权所有（C）互联网协会（2002年）。保留所有权利。
+
+摘要
+
+   本文档描述了用于SNMP架构的基于视图的访问控制模型（VACM）。它定义了控制访问管理信息的程序元素。本文件还包括一个管理信息库（MIB），用于远程管理基于视图的访问控制模型的配置参数。本文件取代RFC 2575。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wijnen 等人              标准轨道                     [第1页]
+
+
+RFC 3415                   SNMP的VACM               2002年12月
+
+
+目录
+
+   1.  引言 .................................................  2
+   1.2.  访问控制 .............................................  3
+   1.3.  本地配置数据存储 .....................................  3
+   2.  模型要素 ...............................................  4
+   2.1.  组 .....................................................  4
+   2.2.  securityLevel ..........................................  4
+   2.3.  上下文 .................................................  4
+   2.4.  MIB视图与视图族 .......................................  5
+   2.4.1.  视图子树 .............................................  5
+   2.4.2.  视图族 ...............................................  6
+   2.5.  访问策略 ...............................................  6
+   3.  程序要素 ...............................................  7
+   3.1.  isAccessAllowed过程概述 ...............................  8
+   3.2.  处理isAccessAllowed服务请求 ..........................  9
+   4.  定义 .................................................. 11
+   5.  知识产权 .............................................. 28
+   6.  致谢 .................................................. 28
+   7.  安全考虑 ............................................  30
+   7.1.  推荐做法 ............................................  30
+   7.2.  组的定义 ............................................  30
+   7.3.  合规性 ..............................................  31
+   7.4.  访问SNMP-VIEW-BASED-ACM-MIB .........................  31
+   8.  参考文献 ............................................  31
+   附录A.  安装 ............................................  33
+   附录B.  变更日志 ........................................  36
+   编者地址 .................................................  38
+   完整版权声明 .............................................  39
+
+1. 引言
+
+   描述互联网管理框架的架构 [RFC3411] 指出，SNMP引擎由以下部分组成：
+
+      1) 调度器
+      2) 消息处理子系统
+      3) 安全子系统
+      4) 访问控制子系统
+
+   应用程序利用这些子系统提供的服务。
+
+   理解SNMP架构及其术语对于理解本文所描述的基于视图的访问控制模型在架构中的位置，以及它如何与架构中的其他子系统交互，至关重要。读者应已阅读并理解[RFC3411]中定义的SNMP架构描述和术语。
+
+Wijnen 等人              标准轨道                     [第2页]
+
+
+RFC 3415                   SNMP的VACM               2002年12月
+
+
+   SNMP引擎的访问控制子系统负责检查是否允许对特定对象（实例）进行某种类型的访问（读取、写入、通知）。
+
+   本文档的目的是定义一种特定的访问控制子系统模型，称为基于视图的访问控制模型（VACM）。注意，这并不意味着这是唯一的访问控制模型。
+
+   本文中“必须”、“不得”、“必要”、“应”、“不应”、“建议”、“不建议”、“推荐”、“可以”和“可选”的关键词，均按BCP 14（RFC 2119）中的定义解释。
+
+1.2. 访问控制
+
+   在处理来自SNMP实体的SNMP检索或修改请求消息时，SNMP实体会（隐式或显式）进行访问控制。例如，命令响应器应用在处理从命令生成器收到的请求时，会应用访问控制。这些请求包含[RFC3411]定义的读取类（Read Class）和写入类（Write Class）PDU。
+
+   当SNMP通知消息由通知发起者（Notification Originator）应用生成时，也会进行访问控制。这些通知消息包含通知类（Notification Class）PDU。
+
+   基于视图的访问控制模型定义了一组服务，应用（如命令响应器或通知发起者）可以调用这些服务以检查访问权限。由应用程序负责调用正确的服务进行访问权限验证。
+
+1.3. 本地配置数据存储
+
+   为实现本文档描述的模型，SNMP实体需要保存关于访问权限和策略的信息。这些信息是SNMP引擎的本地配置数据存储（LCD）的一部分。关于LCD的定义，请参见[RFC3411]。
+
+   为了允许远程配置SNMP实体的LCD，部分LCD内容需要作为管理对象进行访问。本文包含了一个管理信息库（MIB）模块——基于视图的访问控制模型配置MIB（VACM Configuration MIB），定义了这些管理对象类型。
+
+
+
+
+
+
+
+Wijnen 等人              标准轨道                     [第3页]
+
+
+RFC 3415                   SNMP的VACM               2002年12月
+
+
+2. 模型要素
+
+   本节包含实现基于视图的访问控制模型提供的访问控制服务所需的定义。
+
+2.1.  组
+
+   组是由零个或多个<securityModel, securityName>元组组成的集合，代表这些元组所对应的SNMP管理对象的访问权限。一个组定义了属于该组的所有securityName的访问权限。securityModel与securityName的组合最多映射到一个组。组由组名（groupName）标识。
+
+   访问控制模块假设securityName已按需要经过验证，不会进行额外的验证。
+
+   基于视图的访问控制模型在调用访问控制模块以检查访问权限时，使用securityModel和securityName作为输入。它根据securityModel和securityName确定对应的groupName。
+
+2.2.  securityLevel
+
+   可以为组的成员定义不同安全级别的访问权限，即noAuthNoPriv（无认证无隐私）、authNoPriv（认证无隐私）和authPriv（认证隐私）。securityLevel标识在检查访问权限时所假定的安全级别。关于securityLevel的定义，请参见SNMP架构文档[RFC3411]。
+
+   基于视图的访问控制模型要求在调用访问控制模块以检查权限时，传入securityLevel作为输入。
+
+2.3.  上下文
+
+   SNMP上下文是SNMP实体可访问的管理信息集合。一个管理信息项可能存在于多个上下文中。SNMP实体可能有权限访问多个上下文。关于管理信息命名的详细信息，请参见SNMP架构文档[RFC3411]。
+
+   基于视图的访问控制模型定义了vacmContextTable，用于列出本地可用的上下文，按contextName索引。
+
+
+
+
+
+
+
+Wijnen 等人              标准轨道                     [第4页]
+
+
+RFC 3415                   SNMP的VACM               2002年12月
+
+
+2.4.  MIB视图与视图族
+
+   出于安全考虑，限制某些组对管理域中部分管理信息的访问权限非常有价值。为了实现这一功能，访问某个上下文的权限通过“管理信息库（MIB）视图”来定义，该视图详细描述了该上下文中特定的管理对象类型（以及可选的对象类型实例）。例如，对于某个上下文，通常会有一个提供全部管理信息访问的MIB视图，此外还可能存在其他只包含部分信息的MIB视图。这样，可以通过在每个相关上下文中为组指定特定（子集）MIB视图的访问权限，限制其访问范围。
+
+   由于管理对象类型（及其实例）通过ISO的对象标识符（OBJECT IDENTIFIER）树状命名结构进行标识 [ISO-ASN.1, RFC2578]，定义MIB视图时，通常将其视为“视图子树”的集合。每个视图子树是管理对象命名树中的一个子树。因此，一个简单的MIB视图（例如，整个互联网网络管理框架中的所有管理对象）可以用单个视图子树表示，而更复杂的MIB视图（例如，特定网络接口的所有相关信息）则可以由多个视图子树的并集组成。
+
+   虽然任何一组管理对象都可以通过若干视图子树的并集来描述，但在某些情况下，可能需要大量的视图子树。例如，在定义一个MIB表的某一行的所有列时，每列可能对应不同的子树，格式类似，导致子树数量很大。鉴于这些格式相似，可以将所需的子树集合合并成一个结构，称为视图子树族（family of view subtrees），它代表了这些子树的集合。视图子树族可以被包含在某个MIB视图中，也可以被排除。
+
+2.4.1.  视图子树
+
+   视图子树是具有共同ASN.1 OBJECT IDENTIFIER前缀的所有MIB对象实例的集合。每个视图子树由其所有潜在MIB对象实例的最长公共OBJECT IDENTIFIER前缀值标识。
+
+2.4.2.  视图族（ViewTreeFamily）
+
+   视图族是OBJECT IDENTIFIER值（称为族名）与位字符串（称为族掩码）的一一对应。族掩码指示与族名相关的子标识符中哪些是重要的。
+
+   对于每个可能的管理对象实例，如果满足以下两个条件，则该实例属于某个特定的视图族：
+
+   - 该实例的OBJECT IDENTIFIER名称至少包含与族名相同数量的子标识符；
+   - 该实例的OBJECT IDENTIFIER名称中的每个子标识符，若对应的族掩码位非零，则必须与族名中的对应子标识符匹配。
+
+   当配置的族掩码值全为1时，视图族与由族名唯一标识的单一视图子树相同。
+
+   当族掩码的长度不足以进行上述测试时，其值会隐式用全1扩展。因此，族掩码长度为零的视图族始终对应单一视图子树。
+
+2.5.  访问策略
+
+   基于视图的访问控制模型确定一个组的访问权限，该组代表具有相同访问权限的零个或多个securityName。对于某个特定上下文（由contextName标识），如果该组（由groupName标识）在特定的securityModel和securityLevel下有访问权限，则该组的访问权限由读视图（read-view）、写视图（write-view）和通知视图（notify-view）定义。
+
+   - 读视图表示该组在读取对象时被授权访问的对象实例集合。读取对象发生在处理检索操作（处理Read Class PDU）时。
+   - 写视图表示该组在写入对象时被授权访问的对象实例集合。写入对象发生在处理写操作（处理Write Class PDU）时。
+   - 通知视图表示该组在发送通知（如Notification Class PDU）时被授权访问的对象实例集合。
+
+
+
+
+
+Wijnen 等人              标准轨道                     [第6页]
+
+
+RFC 3415                   SNMP的VACM               2002年12月
+
+
+3. 程序要素
+
+   本节描述实现基于视图的访问控制模型的访问控制模块在检查访问权限时所遵循的程序流程（例如由命令响应器或通知发起者应用调用的过程）。抽象的服务原语为：
+
+      statusInformation =          -- 成功或错误指示
+          isAccessAllowed(
+              securityModel        -- 使用的安全模型
+              securityName         -- 请求访问的主体
+              securityLevel        -- 安全级别
+              viewType             -- 读、写或通知视图
+              contextName          -- 包含变量名的上下文
+              variableName         -- 管理对象的OID
+              )
+
+   抽象数据元素包括：
+
+状态信息 - 下面列出几种可能的状态：
+- accessAllowed  - 找到对应的MIB视图，且已授予访问权限。
+- notInView      - 找到对应的MIB视图，但访问被拒绝。变量名不在为指定视图类型（例如，在vacmAccessTable的相关条目）配置的MIB视图中。
+- noSuchView     - 未找到MIB视图，因为没有为指定的视图类型（例如，在vacmAccessTable的相关条目）配置任何视图。
+- noSuchContext  - 未找到MIB视图，因为在vacmContextTable中没有对应的contextName条目。
+- noGroupName    - 未找到MIB视图，因为在vacmSecurityToGroupTable中没有为指定的securityModel和securityName组合配置条目。
+- noAccessEntry  - 未找到MIB视图，因为在vacmAccessTable中没有为指定的contextName、groupName（来自vacmSecurityToGroupTable）、securityModel和securityLevel组合配置条目。
+- otherError     - 发生故障，出现了未定义的错误。
+
+安全模型 - 请求访问所使用的安全模型。
+安全名 - 代表请求访问的主体。
+安全级别 - 请求访问所使用的安全级别。
+视图类型 - 要检查的视图类型（读取、写入或通知）。
+上下文名 - 请求访问的上下文。
+变量名 - 请求访问的对象实例。
+
+Wijnen等人，标准追踪 [第7页]
+
+RFC 3415 SNMP的VACM（基于视图的访问控制模型） December 2002
+
+3.1. isAccessAllowed过程概述
+
+以下图示说明了基于视图的访问控制模型如何做出访问决策。
+
+（图示略）
+
+如何做出isAccessAllowed的决策。
+
+1）输入参数：
+- (a) securityModel - 使用的安全模型
+- (b) securityName - 请求访问的主体
+- (c) securityLevel - 安全级别
+- (d) viewType - 视图类型（读/写/通知）
+- (e) contextName - 所在上下文
+- (f) variableName - 管理对象的OID（由对象类型和对象实例组成）
+
+2）用securityModel（a）和securityName（b）作为索引（a,b）到vacmSecurityToGroupTable，找到唯一一条记录，得到groupName（x）。
+
+3）用contextName（e）、前一步得到的groupName（x）以及securityModel（a）和securityLevel（c）作为索引（e,x,a,c）到vacmAccessTable，找到包含三个MIB视图的唯一条目。
+
+4）用viewType（d）（即读/写/通知）选择合适的MIB视图（viewName y），从前一步的vacmAccessEntry中获取。viewName（y）作为索引到vacmViewTreeFamilyTable，确定定义了哪些变量名（variableNames）在或不在该视图中。
+
+5）检查变量名（f）对应的对象实例是否在该MIB视图中（参见第4节的vacmViewTreeFamilyTable的描述）。这是一个“是/否”决策（z）。
+
+3.2. 处理isAccessAllowed服务请求
+
+本节描述实现基于视图的访问控制模型的访问控制模块在收到isAccessAllowed请求时的处理流程。
+
+1）查询vacmContextTable，获取与contextName对应的SNMP上下文信息。如果没有找到相关信息，则返回错误指示（noSuchContext）给调用模块。
+
+2）查询vacmSecurityToGroupTable，将securityModel和securityName映射到groupName。如果没有找到对应信息，则返回错误指示（noGroupName）。
+
+3）查询vacmAccessTable，获取与groupName、contextName、securityModel和securityLevel对应的条目。如果没有找到，则返回错误指示（noAccessEntry）。
+
+4）根据viewType（a）：
+- a) 若为“read”，使用读取视图进行权限检查；
+- b) 若为“write”，使用写入视图；
+- c) 若为“notify”，使用通知视图。
+
+如果所用视图为空（viewName长度为零），则返回错误指示（noSuchView）。
+
+5）检查：
+- a) 若没有为指定的viewType配置视图，则返回错误指示（noSuchView）。
+- b) 若变量名（对象实例）不在该MIB视图中（参见第4节的描述），则返回错误指示（notInView）。
+- c) 若变量名在视图中，则返回状态信息“accessAllowed”。
+
+（图示略）
+
+4. 定义
+
+SNMP-VIEW-BASED-ACM-MIB 定义开始
+
+导入
+    MODULE-COMPLIANCE, OBJECT-GROUP  从 SNMPv2-CONF
+    MODULE-IDENTITY, OBJECT-TYPE,
+    snmpModules  从 SNMPv2-SMI
+    TestAndIncr,
+    RowStatus, StorageType  从 SNMPv2-TC
+    SnmpAdminString,
+    SnmpSecurityLevel,
+    SnmpSecurityModel  从 SNMP-FRAMEWORK-MIB;
+
+snmpVacmMIB  MODULE-IDENTITY
+    最后更新 "200210160000Z" -- 2002年10月16日午夜
+    组织 "SNMPv3工作组"
+    联系信息 "WG邮箱: snmpv3@lists.tislabs.com
+                  订阅: majordomo@lists.tislabs.com
+                        在邮件正文中：subscribe snmpv3
+
+                  联席主席：Russ Mundy
+                              网络联盟实验室
+                  邮寄地址： 15204 Omega Drive, Suite 300
+                              Rockville, MD 20850-4601
+                              美国
+                  电子邮件：mundy@tislabs.com
+                  电话：+1 301-947-7107
+
+                  联席主席：David Harrington
+                              Enterasys Networks
+                  邮寄地址： 35 Industrial Way
+                              P. O. Box 5004
+                              罗切斯特，新罕布什尔州 03866-5005
+                              美国
+                  电子邮件：dbh@enterasys.com
+                  电话：+1 603-337-2614
+
+                  联合编辑：Bert Wijnen
+                              Lucent Technologies
+                  邮寄地址： Schagen 33
+                              3461 GL Linschoten
+                              荷兰
+                  电子邮件：bwijnen@lucent.com
+                  电话：+31-348-480-685
+
+                  联合编辑：Randy Presuhn
+                              BMC Software, Inc.
+
+                  邮寄地址： 2141 North First Street
+                              San Jose, CA 95131
+                              美国
+                  电子邮件：randy_presuhn@bmc.com
+                  电话：+1 408-546-1006
+
+                  联合编辑：Keith McCloghrie
+                              Cisco Systems, Inc.
+                  邮寄地址： 170 West Tasman Drive
+                              San Jose, CA 95134-1706
+                              美国
+                  电子邮件：kzm@cisco.com
+                  电话：+1-408-526-5260
+"
+    描述 "SNMP的基于视图的访问控制模型的管理信息定义。
+
+                  版权所有 (C) 互联网协会 (2002)。本MIB模块的此版本是RFC 3415的一部分；
+                  详见RFC以获取完整的法律声明。
+"
+
+-- 修订历史
+
+REVISION "200210160000Z" -- 2002年10月16日午夜
+描述 "澄清内容，作为RFC3415发布"
+
+REVISION "199901200000Z" -- 1999年1月20日午夜
+描述 "澄清内容，作为RFC2575发布"
+
+REVISION "199711200000Z" -- 1997年11月20日午夜
+描述 "初始版本，作为RFC2275发布"
+
+定义结束 { snmpModules 16 }
+
+-- 管理分配 ****************************************
+
+vacmMIBObjects  OBJECT IDENTIFIER ::= { snmpVacmMIB 1 }
+vacmMIBConformance  OBJECT IDENTIFIER ::= { snmpVacmMIB 2 }
+
+-- 本地上下文信息 **********************************
+
+vacmContextTable OBJECT-TYPE
+    SYNTAX  序列（VacmContextEntry的集合）
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "本地可用上下文的表。
+
+                 该表为SNMP命令生成器应用提供信息，以便它们能正确配置vacmAccessTable，控制对所有上下文的访问。
+
+                 如果SNMP实体允许动态添加/删除上下文（例如配置变更时），该表可能会动态变化。此类变化只在管理工具识别到更多或更少的上下文时发生。
+
+                 该表中的条目与vacmAccessTable中的条目是独立的。也就是说，由此表中的条目标识的上下文不一定在vacmAccessTable中被引用；反之，vacmAccessTable中的条目所引用的上下文也不一定存在，且不必在此表中列出。
+
+                 该表必须通过默认上下文进行访问，以便命令响应应用能有标准方式检索信息。
+
+                 该表为只读，不能通过SNMP配置。
+                "
+    ::= { vacmMIBObjects 1 }
+
+vacmContextEntry OBJECT-TYPE
+    SYNTAX  VacmContextEntry
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "关于某个特定上下文的信息。"
+    INDEX  { vacmContextName }
+    ::= { vacmContextTable 1 }
+
+VacmContextEntry ::= SEQUENCE
+    {
+        vacmContextName  SnmpAdminString
+    }
+
+vacmContextName OBJECT-TYPE
+    SYNTAX  SnmpAdminString（长度0到32）
+    MAX-ACCESS  只读
+    STATUS  当前
+    描述 "标识特定SNMP实体中某个上下文的人类可读名称。
+
+                 空的contextName（长度为零）表示默认上下文。
+                "
+    ::= { vacmContextEntry 1 }
+
+-- 组信息 ******************************************
+
+vacmSecurityToGroupTable OBJECT-TYPE
+    SYNTAX  序列（VacmSecurityToGroupEntry的集合）
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "该表将securityModel和securityName的组合映射到用于定义一组主体访问控制策略的groupName。"
+    ::= { vacmMIBObjects 2 }
+
+vacmSecurityToGroupEntry OBJECT-TYPE
+    SYNTAX  VacmSecurityToGroupEntry
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "此表中的条目将securityModel和securityName的组合映射到groupName。"
+    INDEX  {
+        vacmSecurityModel,
+        vacmSecurityName
+    }
+    ::= { vacmSecurityToGroupTable 1 }
+
+VacmSecurityToGroupEntry ::= SEQUENCE
+    {
+        vacmSecurityModel  SnmpSecurityModel,
+        vacmSecurityName  SnmpAdminString,
+        vacmGroupName  SnmpAdminString,
+        vacmSecurityToGroupStorageType  StorageType,
+        vacmSecurityToGroupStatus  RowStatus
+    }
+
+vacmSecurityModel OBJECT-TYPE
+    SYNTAX  SnmpSecurityModel（1..2147483647）
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "该安全模型提供了此条目中引用的vacmSecurityName的安全机制。
+
+                 注意，该对象可能不接受“any”(0)值。
+                "
+    ::= { vacmSecurityToGroupEntry 1 }
+
+vacmSecurityName OBJECT-TYPE
+    SYNTAX  SnmpAdminString（长度1到32）
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "主体的securityName，以与安全模型无关的格式表示，由此条目映射到groupName。"
+    ::= { vacmSecurityToGroupEntry 2 }
+
+vacmGroupName OBJECT-TYPE
+    SYNTAX  SnmpAdminString（长度1到32）
+    MAX-ACCESS  读写（可创建）
+    STATUS  当前
+    描述 "该条目所属的组的名称（例如，securityModel和securityName的组合）。
+
+                 该groupName用作索引，进入vacmAccessTable以选择访问控制策略。
+                 但在此表中的值不意味着在vacmAccessTable中一定存在对应的实例。
+                "
+    ::= { vacmSecurityToGroupEntry 3 }
+
+vacmSecurityToGroupStorageType OBJECT-TYPE
+    SYNTAX  StorageType
+    MAX-ACCESS  读写（可创建）
+    STATUS  当前
+    描述 "该概念性行的存储类型。
+                 具有“permanent”值的概念性行不必允许对行中的任何列对象进行写操作。
+                "
+    DEFVAL  { nonVolatile }
+    ::= { vacmSecurityToGroupEntry 4 }
+
+vacmSecurityToGroupStatus OBJECT-TYPE
+    SYNTAX  RowStatus
+    MAX-ACCESS  读写（可创建）
+    STATUS  当前
+    描述 "该概念性行的状态。
+
+                 在所有相关列的实例被正确配置之前，vacmSecurityToGroupStatus列的对应实例值为“notReady”。
+
+                 特别地，刚创建的行在设置了vacmGroupName的值之前不能激活。
+
+                 RowStatus的定义[RFC2579]要求在此描述中说明在何种情况下可以修改该行中的其他对象：
+                 
+                 该对象的值不会影响该行中其他对象是否可以被修改。
+                "
+    ::= { vacmSecurityToGroupEntry 5 }
+
+-- 访问权限信息 **********************************
+
+vacmAccessTable  OBJECT-TYPE
+    SYNTAX  序列（VacmAccessEntry的集合）
+    MAX-ACCESS  不可访问
+    STATUS  当前
+    描述 "组的访问权限表。
+
+每个条目由groupName、contextPrefix、securityModel和securityLevel索引。为了确定是否允许访问，需要从该表中选择一个条目，并使用该条目的适当viewName进行访问控制检查。
+
+选择合适条目的步骤如下：
+
+1）可能匹配的集合由以下集合的交集形成：
+
+- 具有相同vacmGroupName的条目集合
+- 这两个集合的并集：
+  - 具有相同vacmAccessContextPrefix的集合
+  - 具有vacmAccessContextMatch值为“prefix”且其vacmAccessContextPrefix匹配的条目集合
+- 与上述集合的交集：
+  - 具有相同vacmSecurityModel的集合
+  - 具有vacmSecurityModel值为“any”的集合
+- 与上述集合的交集：
+  - vacmAccessSecurityLevel值小于或等于请求的securityLevel的所有条目
+
+2）如果此集合只有一个成员，则选择完成；否则，需决定在ContextPrefixes、SecurityModels和SecurityLevels之间的偏好权重，具体如下：
+a) 如果与消息中的securityModel匹配的条目子集不为空，则舍弃其他条目。
+b) 如果与消息中的contextName匹配的vacmAccessContextPrefix子集不为空，则舍弃其他条目。
+c) 舍弃所有ContextPrefixes短于集合中最长的那个。
+d) 选择securityLevel最高的条目。
+
+请注意，对于securityLevel为noAuthNoPriv的所有组实际上是等价的，因为假设securityName已被认证的前提不成立。
+
+---
+
+vacmAccessEntry对象类型定义如下：
+- 语法：VacmAccessEntry
+- 最大访问权限：不可访问
+- 当前状态：current
+- 描述：在本地配置数据存储（LCD）中配置的访问权限，授权对SNMP上下文的访问。
+
+该表中的条目可以使用对象vacmGroupName的实例值，即使在vacmAccessSecurityToGroupTable中没有对应的vacmGroupName值。
+
+索引包括：
+- vacmGroupName
+- vacmAccessContextPrefix
+- vacmAccessSecurityModel
+- vacmAccessSecurityLevel
+
+---
+
+VacmAccessEntry的结构定义为：
+- vacmAccessContextPrefix：SnmpAdminString
+- vacmAccessSecurityModel：SnmpSecurityModel
+- vacmAccessSecurityLevel：SnmpSecurityLevel
+- vacmAccessContextMatch：INTEGER
+- vacmAccessReadViewName：SnmpAdminString
+- vacmAccessWriteViewName：SnmpAdminString
+- vacmAccessNotifyViewName：SnmpAdminString
+- vacmAccessStorageType：StorageType
+- vacmAccessStatus：RowStatus
+
+---
+
+其他对象类型定义：
+- vacmAccessContextPrefix：匹配上下文名的前缀，长度0到32字符，匹配方式为“exact”或“prefix”。
+- vacmAccessSecurityModel：安全模型，必须在使用中。
+- vacmAccessSecurityLevel：最低安全级别，noAuthNoPriv < authNoPriv < authPriv。索引越高，优先级越高。
+- vacmAccessContextMatch：匹配类型，exact（1）或prefix（2）。
+- vacmAccessReadViewName、vacmAccessWriteViewName、vacmAccessNotifyViewName：定义对应的MIB视图，用于读、写和通知权限。
+- vacmAccessStorageType：存储类型，默认为非易失性。
+- vacmAccessStatus：行状态。
+
+---
+
+关于MIB视图支持实例级粒度为可选项，某些实现可能会因性能成本而避免请求此类配置。
+
+---
+
+vacmMIBViews对象定义：
+- 视图的全局唯一标识符：{ vacmMIBObjects 5 }
+- vacmViewSpinLock：用于协调视图创建或修改的建议锁，避免冲突。该锁为建议性质，不强制执行。
+- vacmViewTreeFamilyTable：存储视图子树族信息，每个族由视图名和子树定义。
+- vacmViewTreeFamilyEntry：族的详细信息，包括视图名、子树、掩码、类型、存储类型和状态。
+
+视图族定义：
+- 视图名：人类可读的名称。
+- 子树：定义视图子树的MIB子树路径。
+- 掩码：与子树结合定义视图族的子树集合。
+- 类型：包括“include”或“exclude”。
+- 存储类型和状态：定义存储方式和行状态。
+
+在创建或修改MIB视图时，应优先创建“排除”族，然后再创建“包含”族；删除时应先删除“包含”族，再删除“排除”族。若请求的实例级访问控制创建不被支持，应返回inconsistentName错误。
+
+每个位掩码中的每一位都指示在确定一个对象标识符（OBJECT IDENTIFIER）是否属于此视图子树族时，是否必须完全匹配对应的子标识符；“1”表示必须完全匹配；“0”表示“通配符”，即任何子标识符值都匹配。
+
+因此，如果对象实例的OBJECT IDENTIFIER X属于某个视图子树族，则对于vacmViewTreeFamilySubtree的每个子标识符，要么：
+
+- vacmViewTreeFamilyMask的第i位为0，或者
+- X的第i个子标识符等于vacmViewTreeFamilySubtree的第i个子标识符。
+
+如果此位掩码的值长度为M位，并且对应的vacmViewTreeFamilySubtree实例中子标识符的数量多于M个，则会用1扩展掩码，直到达到所需的长度。
+
+注意，当此对象的值为零长度字符串时，此扩展规则会生成全为1的掩码（即没有“通配符”），此时视图子树族就是由对应的vacmViewTreeFamilySubtree实例唯一标识的那个视图子树。
+
+此外，长度大于零的掩码不必支持。在这种情况下，此对象将变为只读。
+
+---
+
+定义如下：
+
+**vacmViewTreeFamilyType OBJECT-TYPE**  
+- 语法：INTEGER { included(1), excluded(2) }  
+- 最大访问权限：读写（read-create）  
+- 状态：current  
+- 描述：指示对应的vacmViewTreeFamilySubtree和vacmViewTreeFamilyMask实例，定义的视图子树族是包含在MIB视图中还是被排除在外。  
+- 默认值：included（包含）  
+
+**vacmViewTreeFamilyStorageType OBJECT-TYPE**  
+- 语法：StorageType  
+- 最大访问权限：读写（read-create）  
+- 状态：current  
+- 描述：此概念行的存储类型。值为“permanent”的概念行不必允许对行中的任何列对象进行写操作。  
+- 默认值：nonVolatile（非易失性）  
+
+**vacmViewTreeFamilyStatus OBJECT-TYPE**  
+- 语法：RowStatus  
+- 最大访问权限：读写（read-create）  
+- 状态：current  
+- 描述：此概念行的状态。  
+  RowStatus的定义[RFC2579]要求在描述中说明在何种情况下可以修改此行中的其他对象。  
+  此对象的值不影响是否可以修改此行中的其他对象。
+
+---
+
+合规性信息：  
+- vacmMIBCompliances OBJECT IDENTIFIER：{ vacmMIBConformance 1 }  
+- vacmMIBGroups OBJECT IDENTIFIER：{ vacmMIBConformance 2 }  
+
+**合规声明**：  
+vacmMIBCompliance MODULE-COMPLIANCE  
+- 状态：current  
+- 描述：适用于实现SNMP视图基础访问控制模型（VACM）配置MIB的SNMP引擎的合规声明。  
+- 模块：必须包含vacmBasicGroup组。  
+- 相关对象：  
+  - vacmAccessContextMatch（只读）——不需要写权限。  
+  - vacmAccessReadViewName（只读）——不需要写权限。  
+  - vacmAccessWriteViewName（只读）——不需要写权限。  
+  - vacmAccessNotifyViewName（只读）——不需要写权限。  
+  - vacmAccessStorageType（只读）——不需要写权限。  
+  - vacmAccessStatus（只读）——不需要创建/删除/修改访问vacmAccessTable的权限。  
+  - vacmViewTreeFamilyMask（写入语法：OCTET STRING（SIZE（0）））——不支持通过SNMP配置子树族的支持（使用通配符）。  
+  - vacmViewTreeFamilyType（只读）——不需要写权限。  
+  - vacmViewTreeFamilyStorageType（只读）——不需要写权限。  
+  - vacmViewTreeFamilyStatus（只读）——不需要创建/删除/修改vacmViewTreeFamilyTable的权限。
+
+---
+
+符合性单位：  
+vacmBasicGroup对象组，包含一组对象，提供远程配置实现SNMP视图基础访问控制模型的SNMP引擎的能力。
+
+---
+
+附录A - 安装  
+
+A.1 安装参数  
+在安装过程中，应配置支持此视图基础访问控制模型的权威SNMP引擎，设置若干初始参数，包括：  
+
+1）安全配置  
+- 选择安全配置类型，决定是否以及如何进行初始配置。三种选择：  
+  - initial-minimum-security-configuration（最小安全配置）  
+  - initial-semi-security-configuration（半安全配置）  
+  - initial-no-access-configuration（无访问配置）  
+- 若选择initial-no-access-configuration，则没有初始配置，以下步骤无关紧要。
+
+2）默认上下文  
+- 在vacmContextTable中创建一条条目，contextName为“”（空字符串），代表默认上下文。  
+- 如果存在默认上下文，此表会自动创建。
+
+（未完待续）
+
+3) 初始组
+
+在vacmSecurityToGroupTable中添加一条条目，以允许对“initial”组的访问。
+
+vacmSecurityModel                3（USM）
+vacmSecurityName                 “initial”
+vacmGroupName                    “initial”
+vacmSecurityToGroupStorageType   anyValidStorageType
+vacmSecurityToGroupStatus        active
+
+4) 初始访问权限
+
+在vacmAccessTable中添加三条条目，内容如下：
+
+- 代表属于“initial”组的securityNames，在默认上下文（contextName为“”）中，对<restricted> MIB视图具有基于USM安全模型、securityLevel为“noAuthNoPriv”的只读通知（read-notify）权限。
+
+- 代表属于“initial”组的securityNames，在默认上下文中，对<internet> MIB视图具有基于USM安全模型、securityLevel为“authNoPriv”的读写通知（read-write-notify）权限。
+
+- 如果支持隐私（privacy），则代表属于“initial”组的securityNames，在默认上下文中，对<internet> MIB视图具有基于USM安全模型、securityLevel为“authPriv”的读写通知权限。
+
+这些配置对应于vacmAccessTable中的以下条目：
+
+- 一个用于未认证访问（noAuthNoPriv）的条目：
+
+  vacmGroupName                    “initial”
+  vacmAccessContextPrefix          “”
+  vacmAccessSecurityModel          3（USM）
+  vacmAccessSecurityLevel          noAuthNoPriv
+  vacmAccessContextMatch           exact
+  vacmAccessReadViewName           “restricted”
+  vacmAccessWriteViewName          “”
+  vacmAccessNotifyViewName         “restricted”
+  vacmAccessStorageType            anyValidStorageType
+  vacmAccessStatus                 active
+
+- 一个用于认证访问（authNoPriv），可选支持隐私（authPriv）的条目：
+
+  vacmGroupName                    “initial”
+  vacmAccessContextPrefix          “”
+  vacmAccessSecurityModel          3（USM）
+  vacmAccessSecurityLevel          authNoPriv
+  vacmAccessContextMatch           exact
+  vacmAccessReadViewName           “internet”
+  vacmAccessWriteViewName          “internet”
+  vacmAccessNotifyViewName         “internet”
+  vacmAccessStorageType            anyValidStorageType
+  vacmAccessStatus                 active
+
+5) 两个MIB视图（views），其中第二个视图依赖于安全配置。
+
+- 一个视图，<internet>，用于认证访问：
+
+  - <internet> MIB视图的子树为：
+    “internet” (子树1.3.6.1)
+
+- 另一个视图，<restricted>，用于未认证访问。此视图根据所选的安全配置进行配置：
+
+  - 对于初始无访问配置（initial-no-access-configuration），没有默认的初始配置，因此没有预定义的MIB视图。
+
+  - 对于半安全初始配置（initial-semi-secure-configuration）：
+  
+    <restricted> MIB视图是以下子树的合集：
+    (a) “system” (子树1.3.6.1.2.1.1) [RFC3918]
+    (b) “snmp” (子树1.3.6.1.2.1.11) [RFC3918]
+    (c) “snmpEngine” (子树1.3.6.1.6.3.10.2.1) [RFC3411]
+    (d) “snmpMPDStats” (子树1.3.6.1.6.3.11.2.1) [RFC3412]
+    (e) “usmStats” (子树1.3.6.1.6.3.15.1.1) [RFC3414]
+
+  - 对于最低安全配置（initial-minimum-secure-configuration）：
+  
+    <restricted> MIB视图为：
+    “internet” (子树1.3.6.1)
+
+这对应于vacmViewTreeFamilyTable中的以下“internet”条目：
+
+| 字段名称 | 内容 |
+| -------- | ---- |
+| vacmViewTreeFamilyViewName | “internet” |
+| vacmViewTreeFamilySubtree | 1.3.6.1 |
+| vacmViewTreeFamilyMask | "" |
+| vacmViewTreeFamilyType | 1（包含） |
+| vacmViewTreeFamilyStorageType | anyValidStorageType |
+| vacmViewTreeFamilyStatus | active |
+
+此外，还会在vacmViewTreeFamilyTable中生成以下“restricted”视图的条目：
+
+| 字段名称 | 内容 |
+| -------- | ---- |
+| vacmViewTreeFamilyViewName | “restricted” |
+| vacmViewTreeFamilySubtree | 1.3.6.1 |
+| vacmViewTreeFamilyMask | "" |
+| vacmViewTreeFamilyType | 1（包含） |
+| vacmViewTreeFamilyStorageType | anyValidStorageType |
+| vacmViewTreeFamilyStatus | active |
+
+以及：
+
+- 视图“restricted”对应的子树为：
+  - 1.3.6.1.2.1.11
+  - 1.3.6.1.6.3.10.2.1
+  - 1.3.6.1.6.3.11.2.1
+  - 1.3.6.1.6.3.15.1.1
+
+每个子树的条目结构类似，类型均为“包含”。
+
+B. 变更日志
+
+自RFC 2575以来的变更内容：
+
+- 按照RFC编辑指南，移除了摘要中的引用
+- 更新了参考文献
+
+自RFC 2275以来的变更内容：
+
+- 在vacmSecurityToGroupStatus的DESCRIPTION中添加了说明，明确何种条件下条目可以激活
+- 在MODULE-IDENTITY中添加了REVISION条款
+- 澄清了vacmAccessTable的DESCRIPTION
+- 在vacmAccessContextMatch对象中添加了DEFVAL
+- 在附录A中补充了缺失的列，并进行了重新排列以提高清晰度
+- 修正了附录A中的OID
+- 使用了PDU类术语，替代了RFC1905的PDU类型
+- 添加了第7.4节，关于访问控制的MIB
+- 更新了对新/修订文档的引用
+- 修正了编辑联系信息
+- 纠正了拼写错误
+- 从附录A的示例中移除了一条vacmAccessEntry
+- 进行了其他一些澄清
+- 更新了致谢部分
+
+编辑人员联系方式
+
+Bert Wijnen  
+Lucent Technologies  
+Schagen 33  
+3461 GL Linschoten  
+荷兰  
+电话：+31-348-480-685  
+电子邮箱：bwijnen@lucent.com
+
+Randy Presuhn  
+BMC Software, Inc.  
+2141 North First Street  
+San Jose, CA 95131  
+美国  
+电话：+1 408-546-1006  
+电子邮箱：randy_presuhn@bmc.com
+
+Keith McCloghrie  
+Cisco Systems, Inc.  
+170 West Tasman Drive  
+San Jose, CA 95134-1706  
+美国  
+电话：+1-408-526-5260  
+电子邮箱：kzm@cisco.com
+
+版权声明
+
+本文件版权归互联网协会（2002）所有，保留所有权利。
+
+本文件及其翻译件可以复制、提供给他人，或用于评论、说明或协助实现的派生作品，均可在不限制的情况下全部或部分复制、出版和分发，前提是所有副本和派生作品都必须包含上述版权声明和本声明。然而，除非为制定互联网标准的目的，不能以任何方式修改本文件（如删除版权声明或对互联网协会或其他互联网组织的引用），除非遵循互联网标准制定的版权程序，或为了将其翻译成非英语语言。
+
+上述有限许可为永久性，不会被互联网协会或其继任者或受让人撤销。
+
+本文件及其中包含的信息是“按原样”提供的，互联网协会和互联网工程任务组（IETF）不对其作任何明示或暗示的保证，包括但不限于其使用不会侵犯任何权利或具有适销性或特定用途的暗示保证。
+
+致谢
+
+RFC编辑工作的资金由互联网协会目前提供。

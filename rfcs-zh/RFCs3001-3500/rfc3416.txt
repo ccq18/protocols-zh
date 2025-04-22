@@ -1,0 +1,885 @@
+# RFC 3416 中文翻译 (stub)
+# 原文文件: ../../rfcs/RFCs3001-3500/rfc3416.txt
+
+网络工作组                            本版本编辑：
+意见征求稿：3416                                    R. Presuhn
+标准：62                                               BMC 软件公司
+废止：1905                             之前版本作者：
+类别：标准轨道                                        J. Case
+                                                     SNMP 研究公司
+                                                           K. McCloghrie
+                                                     思科系统公司
+                                                                 M. Rose
+                                            Dover Beach 咨询公司
+                                                           S. Waldbusser
+                                          国际网络服务公司
+                                                           2002年12月
+
+
+                简单网络管理协议（SNMP）协议操作的
+             第2版
+
+本备忘录的状态
+
+   本文件为互联网社区制定的互联网标准轨道协议，旨在征求讨论和改进建议。请参阅最新版本的《互联网官方协议标准》（STD 1）以了解该协议的标准化状态和现状。本文本的分发不受限制。
+
+版权声明
+
+   版权所有（C）互联网协会（2002年）。保留所有权利。
+
+摘要
+
+   本文件定义了简单网络管理协议（SNMP）协议操作的第2版。它规定了用于发送、接收和处理SNMP协议数据单元（PDU）的语法和程序元素。本文件取代RFC 1905。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第1页]
+
+
+RFC 3416              SNMP协议操作             2002年12月
+
+
+目录
+
+   1. 引言 ....................................................    3
+   2. 概述 ....................................................    4
+   2.1. 管理信息 ............................................    4
+   2.2. 请求的重传 ..........................................    4
+   2.3. 消息大小 ............................................    4
+   2.4. 传输映射 ............................................    5
+   2.5. SMIv2数据类型映射 ...................................    6
+   3. 定义 ....................................................    6
+   4. 协议规范 ................................................    9
+   4.1. 通用结构 ............................................    9
+   4.2. PDU处理 .............................................   10
+   4.2.1. GetRequest-PDU ......................................   10
+   4.2.2. GetNextRequest-PDU ..................................   11
+   4.2.2.1. 表遍历示例 ......................................   12
+   4.2.3. GetBulkRequest-PDU ..................................   14
+   4.2.3.1. 另一个表遍历示例 ................................   17
+   4.2.4. Response-PDU ........................................   18
+   4.2.5. SetRequest-PDU ......................................   19
+   4.2.6. SNMPv2-Trap-PDU .....................................   22
+   4.2.7. InformRequest-PDU ...................................   23
+   5. 知识产权声明 ............................................   24
+   6. 致谢 ....................................................   24
+   7. 安全考虑 ..............................................   26
+   8. 参考文献 ..............................................   26
+   8.1. 标准性参考 ..........................................   26
+   8.2. 资料性参考 ..........................................   27
+   9. 与RFC 1905的变更 ......................................   28
+   10. 编辑地址 .............................................   30
+   11. 完整版权声明 .........................................   31
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第2页]
+
+
+RFC 3416              SNMP协议操作             2002年12月
+
+
+1. 引言
+
+   在撰写本文时，SNMP管理框架主要由五个组成部分构成：
+
+      -  一个总体架构，详见STD 62、RFC 3411 [RFC3411]。
+
+      -  描述和命名对象及事件的机制，用于管理目的。第一版的管理信息结构（SMI）称为SMIv1，详见STD 16、RFC 1155 [RFC1155]、STD 16、RFC 1212 [RFC1212] 和 RFC 1215 [RFC1215]。第二版称为SMIv2，详见STD 58、RFC 2578 [RFC2578]、STD 58、RFC 2579 [RFC2579] 和 STD 58、RFC 2580 [RFC2580]。
+
+      -  用于传输管理信息的消息协议。第一版SNMP消息协议称为SNMPv1，详见STD 15、RFC 1157 [RFC1157]。第二版SNMP消息协议（非互联网标准轨道协议）称为SNMPv2c，详见RFC 1901 [RFC1901] 和STD 62、RFC 3417 [RFC3417]。第三版消息协议称为SNMPv3，详见STD 62、RFC 3417 [RFC3417]、RFC 3412 [RFC3412] 和 RFC 3414 [RFC3414]。
+
+      -  访问管理信息的协议操作。第一组协议操作及其PDU格式详见STD 15、RFC 1157 [RFC1157]。第二组协议操作及其PDU格式在本文中定义。
+
+      -  一组基础应用，详见STD 62、RFC 3413 [RFC3413]，以及STD 62、RFC 3415 [RFC3415]中描述的基于视图的访问控制机制。
+
+   关于当时SNMP管理框架的更详细介绍，可参见RFC 3410 [RFC3410]。
+
+   被管理对象通过虚拟信息存储——管理信息库（MIB）进行访问。MIB中的对象由SMI定义的机制描述。
+
+   本文件，即SNMP协议操作第2版，定义了协议的操作，涉及通过消息协议传输的PDU的发送和接收。
+
+
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第3页]
+
+
+2. 概述
+
+   支持命令生成器或通知接收应用（传统称为“管理者”）的SNMP实体与支持命令响应者或通知发起者的SNMP实体（传统称为“代理”）通信。该协议的目的是传输管理信息和操作。
+
+2.1. 管理信息
+
+   “变量”一词指根据SMI [RFC2578]或基于SMI的文本约定定义的非聚合对象类型的实例。 “变量绑定”通常指变量名与其值的配对。但在处理检索请求时，如果发生某些特殊情况，变量绑定会配对变量名和异常指示。
+
+   变量绑定列表是变量绑定的简单列表。
+
+   变量的名称是对象标识符（OBJECT IDENTIFIER），由对应对象类型的OBJECT IDENTIFIER和标识实例的OBJECT IDENTIFIER片段拼接而成。对应对象类型的OBJECT IDENTIFIER称为变量的OBJECT IDENTIFIER前缀。
+
+2.2. 请求的重传
+
+   在本协议的所有请求类型中，接收方在正常情况下应生成并传输响应给请求发起方。是否在未收到相应响应时重传请求，取决于发起请求的应用程序的判断。通常，这取决于请求的紧急程度。但此类应用应负责任地控制重传的频率和持续时间。有关相关拥塞控制原则的讨论，请参见BCP 41 [RFC2914]。
+
+2.3. 消息大小
+
+   SNMP消息的最大尺寸受以下两者中的较小者限制：
+
+   (1)  目标SNMP实体能接受的最大消息尺寸；以及
+
+   (2)  源SNMP实体能生成的最大消息尺寸。
+
+   前者可能基于每个接收方已知；在未知时，使用传输域中定义的值表示。后者由实现特定的本地限制决定。
+
+   每个SNMP传输映射都指明了SNMP实现必须能生成或处理的最小消息尺寸。虽然鼓励实现支持更大的值，但符合规范的实现绝不应生成超过接收SNMP实体允许的消息。
+
+   本协议中定义的GetBulkRequest-PDU的目标之一是减少检索大量管理信息所需的协议交换次数。因此，该PDU类型允许支持命令生成器应用的SNMP实体请求响应尽可能大，前提是符合消息大小的限制。这些限制包括支持命令响应者应用的SNMP实体能生成的消息大小限制，以及支持命令生成器应用的SNMP实体能接收的消息大小限制。
+
+   但最大尺寸的消息可能超过在网络路径上传输的路径MTU。在这种情况下，消息会被分段。分段通常被认为有害 [FRAG]，因为它会降低消息传输的可靠性。因此，发送GetBulkRequest-PDU的SNMP实体必须合理设置参数，以降低分段的风险。特别是在网络压力较大时，应使用较小的最大重复次数（max-repetitions）值。
+
+2.4. 传输映射
+
+   需要注意的是，SNMP消息的交换只依赖不可靠的报文服务，每个消息都必须完整且独立地包含在单个传输数据报中。具体的传输映射和编码规则在其他地方定义 [RFC3417]。但首选的映射方式是使用用户数据报协议（UDP） [RFC768]。
+
+
+
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第4页]
+
+
+2.5. SMIv2数据类型映射
+
+   SMIv2 [RFC2578]定义了11种基本类型（INTEGER、OCTET STRING、OBJECT IDENTIFIER、Integer32、IpAddress、Counter32、Gauge32、Unsigned32、TimeTicks、Opaque、Counter64）和BITS结构。SMIv2的基本类型映射到ASN.1 SNMP协议定义中的SimpleSyntax和ApplicationSyntax选择的对应类型。注意，SMIv2中的INTEGER和Integer32类型映射到SimpleSyntax中的整数值（integer-value）选择类型。同样，Gauge32和Unsigned32类型映射到ApplicationSyntax中的无符号整数值（unsigned-integer-value）选择类型。
+
+   SMIv2的BITS结构映射到SimpleSyntax的字符串值（string-value）选择类型。BITS值被编码为一个OCTET STRING，其中所有定义的位（从第一个位到最后一位）在第一个八位字节的高阶位（第8位）到低阶位（第1位）中依次存放，随后每个后续八位字节的位依次存放，最后一个字节只存放所需的位数。剩余的位（如果有）在生成时设为零，接收时忽略。
+
+3. 定义
+
+   PDU的语法使用ASN.1符号定义 [ASN1]。
+
+   SNMPv2-PDU定义如下：
+
+   ObjectName ::= OBJECT IDENTIFIER
+
+   ObjectSyntax ::= CHOICE {
+         simple           SimpleSyntax,
+         application-wide ApplicationSyntax }
+
+   SimpleSyntax ::= CHOICE {
+         integer-value   INTEGER (-2147483648..2147483647),
+         string-value    OCTET STRING (SIZE (0..65535)),
+         objectID-value  OBJECT IDENTIFIER }
+
+   ApplicationSyntax ::= CHOICE {
+         ipAddress-value        IpAddress,
+         counter-value          Counter32,
+         timeticks-value        TimeTicks,
+         arbitrary-value        Opaque,
+         big-counter-value      Counter64,
+         unsigned-integer-value Unsigned32 }
+
+   IpAddress ::= [APPLICATION 0] IMPLICIT OCTET STRING (SIZE (4))
+
+   Counter32 ::= [APPLICATION 1] IMPLICIT INTEGER (0..4294967295)
+
+   Unsigned32 ::= [APPLICATION 2] IMPLICIT INTEGER (0..4294967295)
+
+   Gauge32 ::= Unsigned32
+
+   TimeTicks ::= [APPLICATION 3] IMPLICIT INTEGER (0..4294967295)
+
+   Opaque ::= [APPLICATION 4] IMPLICIT OCTET STRING
+
+   Counter64 ::= [APPLICATION 6]
+                 IMPLICIT INTEGER (0..18446744073709551615)
+
+   -- 协议数据单元（PDU）
+
+   PDUs ::= CHOICE {
+        get-request      GetRequest-PDU,
+        get-next-request GetNextRequest-PDU,
+        get-bulk-request GetBulkRequest-PDU,
+        response         Response-PDU,
+        set-request      SetRequest-PDU,
+        inform-request   InformRequest-PDU,
+        snmpV2-trap      SNMPv2-Trap-PDU,
+        report           Report-PDU }
+
+   -- PDU定义
+
+   GetRequest-PDU ::= [0] IMPLICIT PDU
+
+   GetNextRequest-PDU ::= [1] IMPLICIT PDU
+
+   Response-PDU ::= [2] IMPLICIT PDU
+
+   SetRequest-PDU ::= [3] IMPLICIT PDU
+
+   -- [4]已废弃
+
+   GetBulkRequest-PDU ::= [5] IMPLICIT BulkPDU
+
+   InformRequest-PDU ::= [6] IMPLICIT PDU
+
+   SNMPv2-Trap-PDU ::= [7] IMPLICIT PDU
+
+   --   关于Report-PDU的用途和具体语义，本文未定义。
+   --   任何使用此PDU的SNMP管理框架都必须定义其用途和语义。
+
+   Report-PDU ::= [8] IMPLICIT PDU
+
+   max-bindings INTEGER ::= 2147483647
+
+   PDU ::= SEQUENCE {
+           request-id INTEGER (-214783648..214783647),
+
+           error-status                -- 有时被忽略
+               INTEGER {
+                   noError(0),
+                   tooBig(1),
+                   noSuchName(2),      -- 代理兼容性
+                   badValue(3),        -- 代理兼容性
+                   readOnly(4),        -- 代理兼容性
+                   genErr(5),
+                   noAccess(6),
+                   wrongType(7),
+                   wrongLength(8),
+                   wrongEncoding(9),
+                   wrongValue(10),
+                   noCreation(11),
+                   inconsistentValue(12),
+                   resourceUnavailable(13),
+                   commitFailed(14),
+                   undoFailed(15),
+                   authorizationError(16),
+                   notWritable(17),
+                   inconsistentName(18)
+               },
+
+           error-index                 -- 有时被忽略
+               INTEGER (0..max-bindings),
+
+           variable-bindings           -- 有时忽略值
+               VarBindList
+       }
+
+   BulkPDU ::=                         -- 必须与PDU结构相同
+       SEQUENCE {                      -- 结构
+           request-id      INTEGER (-214783648..214783647),
+           non-repeaters   INTEGER (0..max-bindings),
+           max-repetitions INTEGER (0..max-bindings),
+
+           variable-bindings           -- 忽略值
+               VarBindList
+       }
+
+   -- 变量绑定
+
+   VarBind ::= SEQUENCE {
+           name ObjectName,
+
+           CHOICE {
+               value          ObjectSyntax,
+               unSpecified    NULL,    -- 在检索请求中
+
+                                       -- 在响应中的异常
+               noSuchObject   [0] IMPLICIT NULL,
+               noSuchInstance [1] IMPLICIT NULL,
+               endOfMibView   [2] IMPLICIT NULL
+           }
+       }
+
+   -- 变量绑定列表
+
+   VarBindList ::= SEQUENCE (SIZE (0..max-bindings)) OF VarBind
+
+   结束
+
+4. 协议规范
+
+4.1. 通用结构
+
+响应PDU中的request-id字段的值取自对应请求PDU中的request-id字段的值。通过使用request-id值，应用程序可以区分（可能存在多个）未完成的请求，从而将传入的响应与未完成的请求相关联。在使用不可靠的数据报服务的情况下，request-id还提供了一种简单的方法，用于识别网络中重复的消息。在重传请求时使用相同的request-id，可以使响应对应于原始传输或重传的请求，从而满足请求。 但为了计算请求-响应事务的往返时间，应用程序在重传请求时应使用不同的request-id值。后一种策略在大多数情况下被推荐使用。
+
+响应PDU中的error-status字段的非零值用于指示发生了错误，阻止请求的处理。在这些情况下，响应PDU的error-index字段的非零值提供了额外信息，标识出导致错误的变量绑定在列表中的位置。变量绑定通过其索引值进行标识。变量绑定列表中的第一个变量绑定索引为一，第二个为二，依此类推。
+
+SNMP将OBJECT IDENTIFIER（对象标识符）值限制为最多128个子标识符，每个子标识符的最大值为2^32 - 1。
+
+4.2 PDU处理
+
+在以下操作元素中，任何未被相关程序引用的PDU字段，接收SNMP实体将忽略。然而，PDU的所有组成部分，包括那些被接收SNMP实体忽略值的部分，必须具有有效的ASN.1语法和编码。例如，某些PDU（如GetRequest-PDU）只关心变量的名称，而不关心其值。在这种情况下，接收SNMP实体会忽略变量绑定中的值部分。未指定的值被定义为用作此类绑定的值部分。
+
+在生成管理通信时，用于封装PDU的“封装消息”将根据所使用的管理框架的“操作元素”生成。“max-bindings”的定义对变量绑定的数量设定了上限。实际上，消息的大小还受到最大消息大小限制的约束。符合规范的实现必须支持在PDU或BulkPDU中包含尽可能多的变量绑定，但不得超过SNMP引擎的最大消息大小限制，且最多支持2147483647个变量绑定。
+
+在接收管理通信时，将遵循所用管理框架的“操作元素”。如果这些操作指示在本地执行消息中的操作，则也会指明该操作可见的MIB视图。
+
+4.2.1 获取请求PDU（GetRequest-PDU）
+
+由应用程序请求生成并传输一个GetRequest-PDU。
+
+当接收一个GetRequest-PDU时，接收的SNMP实体会处理变量绑定列表中的每个变量绑定，生成响应PDU。除非下述情况，否则响应PDU的所有字段与接收请求的字段相同。每个变量绑定的处理如下：
+
+(1) 如果变量绑定的名称与此请求可访问的某个变量的名称完全匹配，则将变量绑定的值字段设置为该变量的值。
+
+(2) 否则，如果变量绑定的名称没有与任何（潜在）可访问变量的OBJECT IDENTIFIER前缀完全匹配的前缀，则其值字段设置为"noSuchObject"。
+
+(3) 否则，变量绑定的值字段设置为"noSuchInstance"。
+
+如果处理任何变量绑定时发生了除上述情况之外的错误，则重新格式化响应PDU，使其request-id和变量绑定字段与接收的GetRequest-PDU相同，将error-status字段设置为"genErr"，并将error-index字段设置为失败的变量绑定的索引。
+
+否则，响应PDU的error-status字段设置为"noError"，error-index字段为零。
+
+生成的响应PDU随后被封装到消息中。如果生成的消息大小不超过本地限制和发起者的最大消息大小，则将其传送给发起该请求的实体。
+
+否则，生成备用的响应PDU。该备用响应PDU的request-id字段与接收的GetRequest-PDU相同，error-status字段设置为"tooBig"，error-index字段为零，变量绑定字段为空。然后将其封装到消息中。如果消息大小符合限制，则传送给发起请求的实体；否则，递增snmpSilentDrops计数器，并丢弃该消息。
+
+4.2.2 获取下一个请求PDU（GetNextRequest-PDU）
+
+由应用程序请求生成并传输一个GetNextRequest-PDU。
+
+当接收一个GetNextRequest-PDU时，接收的SNMP实体会处理变量绑定列表中的每个变量绑定，生成响应PDU。除非下述情况，否则响应PDU的所有字段与接收请求的字段相同。每个变量绑定的处理如下：
+
+(1) 在所有可由此请求访问的变量中，找到名称在字典序中紧随该变量绑定名称之后的第一个变量。将响应PDU中对应变量绑定的名称和值字段设置为该变量的名称和值。
+
+(2) 如果请求的变量绑定的名称在字典序中没有任何后继，即没有比它更大的变量名，则响应PDU中对应变量绑定的值字段设置为"endOfMibView"，名称字段保持为请求中的变量绑定的名称。
+
+如果处理任何变量绑定时发生了除上述情况之外的错误，则重新格式化响应PDU，使其request-id和变量绑定字段与接收的GetNextRequest-PDU相同，将error-status字段设置为"genErr"，error-index字段设置为失败的变量绑定的索引。
+
+否则，error-status字段设置为"noError"，error-index字段为零。
+
+生成的响应PDU随后封装到消息中。如果消息大小符合限制，则传送给发起请求的实体；否则，生成备用响应PDU。该备用响应PDU的request-id与请求相同，error-status设置为"tooBig"，error-index为零，变量绑定为空。封装后，如果消息大小符合限制，则传送；否则，递增snmpSilentDrops计数器，并丢弃该消息。
+
+4.2.2.1 表遍历示例
+
+GetNextRequest-PDU的一个重要用途是遍历MIB中的概念表。此类请求的语义，以及识别MIB中对象实例的方法，使得可以像表格一样访问相关对象。
+
+在下面的协议交换示意中，应用程序检索某个网络设备的IP网络到媒体地址转换表（RFC1213）中的每个条目的物理地址和地址映射类型，还检索sysUpTime的值（映射存在的时间点）。假设响应端的IP网络到媒体表有三条记录：
+
+接口编号  网络地址  物理地址  类型
+
+1            10.0.0.51     00:00:10:01:23:45  static  
+1             9.2.3.4      00:00:10:54:32:10  dynamic  
+2            10.0.0.15     00:00:10:98:76:54  dynamic  
+
+支持命令生成器应用的SNMP实体首先发送一个包含以下对象标识符的GetNextRequest-PDU：
+
+GetNextRequest ( sysUpTime,
+                   ipNetToMediaPhysAddress,
+                   ipNetToMediaType )
+
+支持命令响应端的SNMP实体以响应PDU回复：
+
+Response (( sysUpTime.0 =  "123456" ),
+           ( ipNetToMediaPhysAddress.1.9.2.3.4 = "000010543210" ),
+           ( ipNetToMediaType.1.9.2.3.4 =  "dynamic" ))
+
+支持命令生成器的SNMP实体继续请求：
+
+GetNextRequest ( sysUpTime,
+                   ipNetToMediaPhysAddress.1.9.2.3.4,
+                   ipNetToMediaType.1.9.2.3.4 )
+
+支持命令响应端的SNMP实体响应：
+
+Response (( sysUpTime.0 =  "123461" ),
+           ( ipNetToMediaPhysAddress.1.10.0.0.51 = "000010012345" ),
+           ( ipNetToMediaType.1.10.0.0.51 =  "static" ))
+
+支持命令生成器的SNMP实体继续请求：
+
+GetNextRequest ( sysUpTime,
+                   ipNetToMediaPhysAddress.1.10.0.0.51,
+                   ipNetToMediaType.1.10.0.0.51 )
+
+支持命令响应端的SNMP实体响应：
+
+Response (( sysUpTime.0 =  "123466" ),
+           ( ipNetToMediaPhysAddress.2.10.0.0.15 = "000010987654" ),
+           ( ipNetToMediaType.2.10.0.0.15 =  "dynamic" ))
+
+支持命令生成器的SNMP实体继续请求：
+
+GetNextRequest ( sysUpTime,
+                   ipNetToMediaPhysAddress.2.10.0.0.15,
+                   ipNetToMediaType.2.10.0.0.15 )
+
+由于表中没有更多条目，支持命令响应端的SNMP实体会用下一个字典序中的对象变量响应，例如：
+
+Response (( sysUpTime.0 =  "123471" ),
+           ( ipNetToMediaNetAddress.1.9.2.3.4 = "9.2.3.4" ),
+           ( ipRoutingDiscards.0 =  "2" ))
+
+注意到，当到达ipNetToMediaPhysAddress列的末尾时，第二个变量绑定已“回绕”到下一列的第一行。此外，当到达ipNetToMedia表的末尾时，命令响应端用超出该表的下一个对象响应，标志着表的结束。
+
+4.2.3 获取批量请求PDU（GetBulkRequest-PDU）
+
+由应用程序请求生成并传输一个GetBulkRequest-PDU。其目的是请求传输大量数据，包括但不限于高效快速地检索大型表。
+
+接收一个GetBulkRequest-PDU后，接收的SNMP实体会处理变量绑定列表中的每个变量绑定，生成一个request-id字段值与请求相同的响应PDU。
+
+对于GetBulkRequest-PDU类型，每个变量绑定的成功处理会在响应PDU中生成零个或多个变量绑定。也就是说，GetRequest-PDU、GetNextRequest-PDU和SetRequest-PDU类型的变量绑定与响应PDU之间的一对一映射关系，不适用于GetBulkRequest-PDU的变量绑定与响应PDU之间的映射。
+
+请求中的非重复者（non-repeaters）和最大重复次数（max-repetitions）字段的值指定了所请求的处理方式。响应PDU中请求的变量绑定数量为：在请求的前N个变量绑定中请求一个变量绑定，在剩余的R个变量绑定中每个请求M个变量绑定。因此，请求中所请求的变量绑定总数为 N + (M * R)，其中N的值为以下两者中的较小者：a）请求中的非重复者字段值，b）请求中的变量绑定总数；M为请求中的最大重复次数字段值；R的值为以下两者中的较大者：a）请求中的变量绑定总数减去N，b）零。
+
+接收的SNMP实体会生成一个响应PDU，其所包含的变量绑定数量最多为请求中所请求的总数。请求ID应与接收到的GetBulkRequest-PDU中的请求ID相同。
+
+如果N大于零，则响应PDU中的前N个变量绑定（从第1个到第N个）按如下方式生成：
+
+(1) 在所有由此请求可访问的变量的名称的字典序列表中，找到第一个在请求的GetBulkRequest-PDU中变量绑定的名称之后的字典序后继变量的名称。将响应PDU中对应变量绑定的名称和值字段设置为所定位变量的名称和值。
+
+(2) 如果请求的变量绑定的名称在字典序上没有任何可访问变量的名称之后，即不存在字典序后继，则对应的响应变量绑定的值字段设置为"endOfMibView"，名称字段设置为请求中的变量绑定的名称。
+
+如果M和R都非零，则第N+1个及之后的变量绑定（即第N+1个到第N+(M*R)个）也以类似方式生成。对于每个i（0<i≤M）和每个r（0<r≤R），响应PDU中的第 (N + ((i-1)*R) + r) 个变量绑定按如下方式生成：
+
+(1) 在所有由此请求可访问的变量的名称的字典序列表中，找到第(i)-个在第(N + r)个变量绑定的名称之后的字典序后继变量的名称。将响应中的对应变量绑定的名称和值字段设置为所定位变量的名称和值。
+
+(2) 如果不存在第(i)个字典序后继，则对应的响应变量绑定的值字段设置为"endOfMibView"，名称字段设置为最后一个字典序后继的名称，或者如果没有任何字典序后继，则设置为第(N + r)个请求中的变量绑定的名称。
+
+虽然响应PDU中变量绑定的最大数量由N + (M * R)界定，但响应可能会因为以下三种原因而生成较少的变量绑定（可能为零）：
+
+(1) 如果封装响应PDU的消息大小超过了本地约束或发起者的最大消息大小，则生成的响应会包含较少的变量绑定。这个较少的数量是通过从变量绑定集合的末尾移除一些变量绑定，使得封装响应PDU的消息大小大致等于但不超过本地约束或发起者的最大消息大小。注意，移除的变量绑定数量与N、M、R的值无关。
+
+(2) 如果在某个迭代i（0<i≤M）中，所有生成的变量绑定的值字段都被设置为"endOfMibView"，则响应可以在第 (N + (i * R)) 个变量绑定后截断。
+
+(3) 如果处理包含大量重复的请求时，所需的处理时间明显超过普通请求，则命令响应应用可以提前终止请求，至少完成一个重复。
+
+如果变量绑定的处理失败，原因不在上述情况之列，则响应PDU会重新格式化，保持请求ID和变量绑定字段与接收的GetBulkRequest-PDU相同，错误状态字段设置为"genErr"，错误索引字段设置为对应失败变量绑定在原始请求中的索引。
+
+否则，响应PDU的错误状态字段设置为"noError"，错误索引字段为零。
+
+生成的响应PDU（可能变量绑定为空）随后被封装到消息中。如果消息的大小不超过本地约束和发起者的最大消息大小，则将其传送给发起的GetBulkRequest-PDU的发起者；否则，增加snmpSilentDrops计数器，并丢弃该消息。
+
+4.2.3.1. 另一个表遍历示例
+
+该示例演示了如何用GetBulkRequest-PDU作为GetNextRequest-PDU的替代方案。通过较少的交换，实现了与第4.2.2.1节中相同的IP网络到媒体表的遍历。
+
+支持命令生成器应用的SNMP实体首先发送一个max-repetitions值为2的GetBulkRequest-PDU，包含如下请求的对象标识符（OBJECT IDENTIFIER）作为变量名：
+
+    GetBulkRequest [ non-repeaters = 1, max-repetitions = 2 ]
+                  ( sysUpTime,
+                    ipNetToMediaPhysAddress,
+                    ipNetToMediaType )
+
+支持命令响应器应用的SNMP实体以响应PDU作出回应：
+
+    Response (( sysUpTime.0 =  "123456" ),
+               ( ipNetToMediaPhysAddress.1.9.2.3.4 = "000010543210" ),
+               ( ipNetToMediaType.1.9.2.3.4 =  "dynamic" ),
+               ( ipNetToMediaPhysAddress.1.10.0.0.51 = "000010012345" ),
+               ( ipNetToMediaType.1.10.0.0.51 =  "static" ))
+
+支持命令生成器应用的SNMP实体继续发送：
+
+    GetBulkRequest [ non-repeaters = 1, max-repetitions = 2 ]
+                     ( sysUpTime,
+                       ipNetToMediaPhysAddress.1.10.0.0.51,
+                       ipNetToMediaType.1.10.0.0.51 )
+
+支持命令响应器的SNMP实体回应：
+
+    Response (( sysUpTime.0 =  "123466" ),
+               ( ipNetToMediaPhysAddress.2.10.0.0.15 = "000010987654" ),
+               ( ipNetToMediaType.2.10.0.0.15 = "dynamic" ),
+               ( ipNetToMediaNetAddress.1.9.2.3.4 = "9.2.3.4" ),
+               ( ipRoutingDiscards.0 =  "2" ))
+
+注意，和第一个示例一样，响应中的变量绑定表明已到达表的末尾。第四个变量绑定通过返回下一列的信息实现，第五个变量绑定通过返回紧随表之后的第一个对象的信息实现。这个响应向命令生成器应用发出表结束的信号。
+
+4.2.4. 响应PDU
+
+响应PDU由SNMP实体在接收到GetRequest-PDU、GetNextRequest-PDU、GetBulkRequest-PDU、SetRequest-PDU或InformRequest-PDU后生成（详见本文其他部分的描述）。
+
+如果响应PDU的错误状态字段非零，则变量绑定列表中的变量绑定的值字段将被忽略。
+
+如果响应PDU的错误状态字段和错误索引字段都非零，则错误索引字段的值为请求中对应失败变量绑定的索引（在变量绑定列表中，第一项索引为1，第二项为2，依此类推）。
+
+支持命令生成器应用的合规SNMP实体必须能够正确接收和处理错误状态字段为"noSuchName"、"badValue"或"readOnly"的响应PDU（详见[RFC2576]的第1.3节和4.3节）。
+
+接收到响应PDU后，接收的SNMP实体会将其内容呈现给发起请求的应用程序，使用相同的请求ID值。更多细节请参见[RFC3412]。
+
+4.2.5. SetRequest-PDU
+
+SetRequest-PDU由应用程序发起请求后生成并传输。
+
+接收SetRequest-PDU后，SNMP实体会计算封装了响应PDU的消息的最大可能大小，包括请求ID和变量绑定字段的值，以及错误状态和错误索引字段的最大可能大小。如果计算出的消息大小超过本地约束或发起者的最大消息大小，则会生成备用的响应PDU，传送给发起的SetRequest-PDU的发起者，并立即终止对该请求的处理。该备用响应PDU的格式与接收的SetRequest-PDU相同，错误状态字段设置为"tooBig"，错误索引字段设置为0，变量绑定字段为空。然后将其封装到消息中。如果消息大小不超过本地约束和发起者的最大消息大小，则传送该消息；否则，增加snmpSilentDrops计数器，并丢弃该消息。无论如何，SetRequest-PDU的处理都在此终止。
+
+如果没有出现上述情况，SNMP实体会逐个处理变量绑定列表中的每个变量绑定，生成响应PDU。响应PDU的所有字段都与接收请求的相应字段相同，除非下述另有说明。
+
+变量绑定的处理概念上是一个两阶段操作。第一阶段，验证每个变量绑定；如果所有验证成功，则进入第二阶段，修改每个变量。实现者可以选择将这两个阶段作为多个实现步骤，甚至在某些情况下，为确保一致性，可能需要多次实现。
+
+在第一阶段，对每个变量绑定执行以下验证，直到全部成功或出现失败：
+
+(1) 如果变量绑定的名称指向一个存在或不存在的变量，但由于不在适当的MIB视图中而被拒绝访问，则将响应PDU的错误状态字段设置为"noAccess"，错误索引字段设置为失败变量绑定的索引。
+
+(2) 否则，如果没有任何变量具有相同OBJECT IDENTIFIER前缀且可以被创建或修改（无论指定什么新值），则将错误状态字段设置为"notWritable"，错误索引字段设置为失败变量绑定的索引。
+
+(3) 否则，如果变量绑定的值字段根据ASN.1语言定义，指定的类型与所有具有相同OBJECT IDENTIFIER前缀的变量所需的类型不一致，则将错误状态字段设置为"wrongType"，错误索引字段设置为失败变量绑定的索引。
+
+否则，如果变量绑定的值字段根据ASN.1语言规定，指定的长度与所有共享相同OBJECT IDENTIFIER前缀的变量绑定所需的长度不一致，则Response-PDU的error-status字段被设置为“wrongLength”，其error-index字段被设置为失败的变量绑定的索引。
+
+否则，如果变量绑定的值字段包含与该字段的ASN.1标签不一致的ASN.1编码，则Response-PDU的error-status字段被设置为“wrongEncoding”，其error-index字段被设置为失败的变量绑定的索引。（注意，并非所有实现策略都会生成此错误。）
+
+否则，如果变量绑定的值字段指定的值在任何情况下都不能赋予该变量，则Response-PDU的error-status字段被设置为“wrongValue”，其error-index字段被设置为失败的变量绑定的索引。
+
+如果变量绑定的名称指定的变量不存在且永远无法创建（即使某些共享相同OBJECT IDENTIFIER前缀的变量在某些情况下可能被创建），则Response-PDU的error-status字段被设置为“noCreation”，其error-index字段被设置为失败的变量绑定的索引。
+
+如果变量绑定的名称指定的变量不存在，但在当前情况下无法创建（即使在其他情况下可以创建），则Response-PDU的error-status字段被设置为“inconsistentName”，其error-index字段被设置为失败的变量绑定的索引。
+
+如果变量绑定的名称指定的变量存在，但无论指定什么新值都无法修改，则Response-PDU的error-status字段被设置为“notWritable”，其error-index字段被设置为失败的变量绑定的索引。
+
+如果变量绑定的值字段指定的值在其他情况下可以由变量持有，但目前不一致或无法赋值，则Response-PDU的error-status字段被设置为“inconsistentValue”，其error-index字段被设置为失败的变量绑定的索引。
+
+在上述步骤中，如果将变量绑定的值字段中指定的值赋给指定变量时需要分配当前不可用的资源，则Response-PDU的error-status字段被设置为“resourceUnavailable”，其error-index字段被设置为失败的变量绑定的索引。
+
+如果变量绑定的处理因上述未列出原因失败，则Response-PDU的error-status字段被设置为“genErr”，其error-index字段被设置为失败的变量绑定的索引。
+
+否则，变量绑定的验证成功。
+
+在第一阶段结束时，如果所有变量绑定的验证都成功，则Response-PDU的error-status字段被设置为“noError”，error-index字段被设置为零，处理继续进行。
+
+对于请求中的每个变量绑定，如果必要，创建所述变量，并将指定的值赋予它。每个变量赋值的操作都视为与请求中所有其他赋值同时进行。然而，如果在单个请求中多次命名同一变量但关联不同的值，则对该变量的实际赋值取决于实现。
+
+如果任何这些赋值（即使在所有先前验证之后）失败，则撤销所有其他赋值，并将Response-PDU的error-status字段设置为“commitFailed”，error-index字段设置为失败的变量绑定的索引。
+
+只有在无法撤销所有赋值的情况下，才将Response-PDU的error-status字段设置为“undoFailed”，error-index字段设置为零。强烈建议实现者采取一切可能的措施以避免使用“commitFailed”或“undoFailed”这两个错误状态码——这两个错误状态码不应被视为在实现中走捷径的许可。
+
+最后，将生成的Response-PDU封装成消息，并传送给SetRequest-PDU的发起者。
+
+4.2.6. SNMPv2-Trap-PDU
+
+SNMPv2-Trap-PDU由SNMP实体代表通知发起应用生成并传输。它常用于通知远程SNMP实体上的通知接收应用事件已发生或某个条件存在。此通知传递机制不提供确认。
+
+SNMPv2-Trap-PDU的目标地址由SNMP实体以实现相关的方式确定。SNMPv2-Trap-PDU的变量绑定列表中的前两个变量绑定分别是sysUpTime.0 [RFC3418]和snmpTrapOID.0 [RFC3418]。如果在调用相应的NOTIFICATION-TYPE宏时包含OBJECTS子句，则由此通知实例化的每个对应变量会按顺序复制到变量绑定字段中。如果还包括其他变量（由生成SNMP实体选择性地包含），则每个也会被复制到变量绑定字段中。
+
+4.2.7.  InformRequest-PDU
+
+SNMP实体代表通知发起应用生成并传输一个InformRequest-PDU。它常用于通知接收应用事件已发生或某个条件存在。这是一种确认的通知传递机制，但当然没有保证一定会成功。
+
+通知发起应用指定了InformRequest-PDU的目标地址。其变量绑定列表中的前两个变量绑定分别是sysUpTime.0 [RFC3418]和snmpTrapOID.0 [RFC3418]。如果在调用相应的NOTIFICATION-TYPE宏时包含OBJECTS子句，则由此通知实例化的每个对应变量会按顺序复制到变量绑定字段中。如果还包括其他变量（由生成SNMP实体选择性地包含），则每个也会被复制到变量绑定字段中。
+
+收到InformRequest-PDU后，接收的SNMP实体会确定封装了具有相同request-id、error-status、error-index和variable-bindings字段值的Response-PDU的消息大小。如果确定的消息大小大于本地限制或发起者的最大消息大小，则会生成备用的Response-PDU，传送给发起的InformRequest-PDU的发起者，并立即终止对该InformRequest-PDU的处理。该备用Response-PDU的request-id字段与接收到的InformRequest-PDU相同，error-status字段设置为“tooBig”，error-index字段设置为零，variable-bindings字段为空。然后将此备用Response-PDU封装成消息。如果生成的消息大小小于或等于本地限制和发起者的最大消息大小，则传送给发起的InformRequest-PDU的发起者；否则，增加snmpSilentDrops [RFC3418]计数器，并丢弃该消息。无论如何，处理该InformRequest-PDU的过程都将终止。
+
+否则，接收的SNMP实体：
+
+(1) 将其内容呈现给相应的应用程序；
+
+(2) 生成一个与接收到的InformRequest-PDU具有相同request-id和variable-bindings字段值的Response-PDU，error-status字段设置为“noError”，error-index字段设置为零；
+
+(3) 将生成的Response-PDU传送给发起该InformRequest-PDU的实体。
+
+5. 知识产权声明
+
+IETF不对本文件中描述的技术的实现或使用可能涉及的任何知识产权或其他权利的有效性或范围发表任何立场，也不保证已尽力识别此类权利。关于标准轨迹和标准相关文档中权利的程序，详见BCP-11。任何为公开发布而提出的权利声明或许可保证，或为获得此类专有权利的通用许可或权限所作的尝试的结果，可以从IETF秘书处获得。
+
+IETF鼓励任何有兴趣的方向其报告可能涉及实现本标准所需技术的版权、专利或专利申请或其他专有权利。请将相关信息提交给IETF执行董事。
+
+6. 致谢
+
+本文件由SNMPv3工作组完成。特别感谢以下工作组成员的贡献：
+
+- Randy Bush
+- Jeffrey D. Case
+- Mike Daniele
+- Rob Frye
+- Lauren Heintz
+- Keith McCloghrie
+- Russ Mundy
+- David T. Perkins
+- Randy Presuhn
+- Aleksey Romanov
+- Juergen Schoenwaelder
+- Bert Wijnen
+
+本版本由Randy Presuhn编辑，最初基于以下设计团队成员的工作：
+
+- Jeffrey D. Case
+- Keith McCloghrie
+- David T. Perkins
+- Randy Presuhn
+- Juergen Schoenwaelder
+
+此前版本由Keith McCloghrie编辑，主要由以下四位贡献者完成：
+
+- Jeffrey D. Case
+- Keith McCloghrie
+- Marshall T. Rose
+- Steven Waldbusser
+
+此外，还感谢SNMPv2工作组对前述版本的贡献，特别感谢以下人员的贡献：
+
+- Alexander I. Alten
+- Dave Arneson
+- Uri Blumenthal
+- Doug Book
+- Kim Curran
+- Jim Galvin
+- Maria Greene
+- Iain Hanson
+- Dave Harrington
+- Nguyen Hien
+- Jeff Johnson
+- Michael Kornegay
+- Deirdre Kostick
+- David Levi
+- Daniel Mahoney
+- Bob Natale
+- Brian O'Keefe
+- Andrew Pearson
+- Dave Perkins
+- Randy Presuhn
+- Aleksey Romanov
+- Shawn Routhier
+- Jon Saperia
+- Juergen Schoenwaelder
+- Bob Stewart
+- Kaj Tesink
+- Glenn Waters
+- Bert Wijnen
+
+7. 安全考虑
+
+本文件定义的协议本身不提供安全环境。即使网络本身是安全的（例如通过使用IPSec），也无法控制谁有权限访问管理信息。
+
+建议实现者考虑SNMPv3框架提供的安全特性，特别推荐使用用户基础安全模型STD 62，RFC 3414 [RFC3414]，以及基于视图的访问控制模型STD 62，RFC 3415 [RFC3415]。
+
+由此，用户或管理员有责任确保SNMP实体被正确配置，以确保：
+
+- 只有具有合法权限的主体（用户）才能访问或修改该实体支持的任何MIB对象的值；
+- 相关事件在实体上得到适当的通知；
+- 实体对已通知的事件和信息做出适当且可信的响应。
+
+8. 参考文献
+
+8.1. 规范性参考文献
+
+[RFC768] Postel, J., “用户数据报协议”，STD 6，RFC 768，1980年8月。
+
+以下是英文内容的中文翻译：
+
+```
+   [RFC2578]   McCloghrie, K., Perkins, D., Schoenwaelder, J., Case, J.,
+               Rose, M. 和 S. Waldbusser，“管理信息结构版本2（SMIv2）”，
+               STD 58，RFC 2578，1999年4月。
+
+   [RFC2579]   McCloghrie, K., Perkins, D., Schoenwaelder, J., Case, J.,
+               Rose, M. 和 S. Waldbusser，“SMIv2的文本约定”，
+               STD 58，RFC 2579，1999年4月。
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第26页]
+
+
+RFC 3416              SNMP协议操作                     2002年12月
+
+
+   [RFC2580]   McCloghrie, K., Perkins, D., Schoenwaelder, J., Case, J.,
+               Rose, M. 和 S. Waldbusser，“SMIv2的符合性声明”，
+               STD 58，RFC 2580，1999年4月。
+
+   [RFC3411]   Harrington, D., Presuhn, R. 和 B. Wijnen，“描述简单网络管理协议（SNMP）管理框架的架构”，
+               STD 62，RFC 3411，2002年12月。
+
+   [RFC3412]   Case, J., Harrington, D., Presuhn, R. 和 B. Wijnen，
+               “SNMP的消息处理与调度”，STD 62，RFC 3412，2002年12月。
+
+   [RFC3413]   Levi, D., Meyer, P. 和 B. Stewart，“SNMP应用程序”，
+               STD 62，RFC 3413，2002年12月。
+
+   [RFC3414]   Blumenthal, U. 和 B. Wijnen，“SNMP第3版的基于用户的安全模型（USM）”，
+               STD 62，RFC 3414，2002年12月。
+
+   [RFC3415]   Wijnen, B., Presuhn, R. 和 K. McCloghrie，“SNMP的基于视图的访问控制模型（VACM）”，
+               STD 62，RFC 3415，2002年12月。
+
+   [RFC3417]   Presuhn, R., Case, J., McCloghrie, K., Rose, M. 和 S.
+               Waldbusser，“SNMP的传输映射”，STD 62，RFC 3417，2002年12月。
+
+   [RFC3418]   Presuhn, R., Case, J., McCloghrie, K., Rose, M. 和 S.
+               Waldbusser，“SNMP的管理信息库（MIB）”，
+               STD 62，RFC 3418，2002年12月。
+
+   [ASN1]      信息处理系统——开放系统互联——抽象语法标记一（ASN.1）规范，国际标准化组织。国际标准8824，1987年12月。
+
+8.2.  资料性参考文献
+
+   [FRAG]      Kent, C. 和 J. Mogul，“碎片化考虑有害”，
+               会议论文，ACM SIGCOMM '87，佛蒙特州斯托，1987年8月。
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第27页]
+
+
+RFC 3416              SNMP协议操作                     2002年12月
+
+
+   [RFC1155]   Rose, M. 和 K. McCloghrie，“基于TCP/IP互联网的管理信息的结构与标识”，
+               STD 16，RFC 1155，1990年5月。
+
+   [RFC1157]   Case, J., Fedor, M., Schoffstall, M. 和 J. Davin，
+               “简单网络管理协议”，STD 15，RFC 1157，1990年5月。
+
+   [RFC1212]   Rose, M. 和 K. McCloghrie，“简明MIB定义”，
+               STD 16，RFC 1212，1991年3月。
+
+   [RFC1213]   McCloghrie, K. 和 M. Rose，编辑，“TCP/IP互联网的网络管理管理信息库：MIB-II”，
+               STD 17，RFC 1213，1991年3月。
+
+   [RFC1215]   Rose, M.，“定义SNMP陷阱的约定”，RFC 1215，1991年3月。
+
+   [RFC1901]   Case, J., McCloghrie, K., Rose, M. 和 S. Waldbusser，
+               “社区基础的SNMPv2介绍”，RFC 1901，1996年1月。
+
+   [RFC2576]   Frye, R., Levi, D., Routhier, S. 和 B. Wijnen，
+               “互联网标准网络管理框架的第1、2、3版本的共存性”，
+               RFC 2576，2000年3月。
+
+   [RFC2863]   McCloghrie, K. 和 F. Kastenholz，“接口组MIB”，
+               RFC 2863，2000年6月。
+
+   [RFC2914]   Floyd, S.，“拥塞控制原则”，BCP 41，RFC 2914，2000年9月。
+
+   [RFC3410]   Case, J., Mundy, R., Partain, D. 和 B. Stewart，
+               “互联网标准管理框架的引言和适用性声明”，
+               RFC 3410，2002年12月。
+
+9.  与RFC 1905的变更
+
+   以下是与RFC 1905的差异：
+
+      -  修正了版权声明中的拼写错误；
+
+      -  更新了版权日期；
+
+      -  更新了新编辑者的姓名和联系方式；
+
+      -  添加了关于知识产权的声明；
+
+      -  对布局和排版进行了美化修正；
+
+      -  添加了目录；
+
+      -  标题已更改；
+
+      -  更新了文档的页眉和页脚；
+
+      -  删除了旧的第2.3节，标题为“访问管理信息”；
+
+      -  改变了请求ID的定义方式，虽然最终语法和语义保持不变，以避免与SMI的耦合。这不影响协议的任何方面；
+
+      -  将旧第4.1节中的“异常”一词替换为“错误”。这不影响协议的任何方面；
+
+      -  删除了旧第4.2节的前两段；
+
+      -  澄清了实现必须支持的最大变量绑定数。这不影响协议的任何方面；
+
+      -  将“SNMPv2应用”出现的地方替换为“应用程序”；
+
+      -  删除了旧第4.2.3节中描述处理不可能情况的三句话。这不影响协议的任何方面；
+
+      -  澄清了旧第4.2.6节中SNMPv2-Trap-PDU的使用。这不影响协议的任何方面；
+
+      -  将旧第4.2.7节中对InformRequest-PDU的描述与架构保持一致。这不影响协议的任何方面；
+
+      -  更新了参考文献；
+
+      -  重写了引言节；
+
+      -  用RFC 2571中的术语替换了管理器/代理/SNMPv2实体的术语。这不影响协议的任何方面；
+
+      -  用等效的行内ASN.1替代了从SMI导入的内容。这不影响协议的任何方面；
+
+      -  添加了关于在表遍历示例中到达表末端的两种不同表现形式的说明；
+
+      -  在安全考虑部分添加了内容；
+
+      -  更新了关于Report-PDU使用的ASN.1注释。这不影响协议的任何方面；
+
+      -  更新了致谢部分；
+
+      -  包含了对BITS处理的说明；
+
+      -  删除了PDU的ASN.1定义中的多余逗号；
+
+      -  添加了摘要；
+
+      -  使通知中的额外变量绑定处理与陷阱保持一致。这是对编辑疏漏的修正，也反映了实现实践；
+
+      -  添加了对RFC 2914的引用。
+
+10.  编辑联系方式
+
+   Randy Presuhn
+   BMC软件公司
+   北第一街2141号
+   圣何塞，加利福尼亚州，95131
+   美国
+
+   电话：+1 408 546 1006
+   电子邮箱：randy_presuhn@bmc.com
+
+
+
+
+
+Presuhn 等人             标准轨道                     [第30页]
+
+
+RFC 3416              SNMP协议操作                     2002年12月
+
+
+11.  完整版权声明
+
+   版权所有（C）互联网协会（2002年）。保留所有权利。
+
+   本文件及其翻译版本可以被复制和提供给他人，任何评论、解释或协助实现的派生作品也可以在不受限制的情况下全部或部分复制、出版和分发，前提是所有此类副本和派生作品都必须包含上述版权声明和本段内容。然而，除非为制定互联网标准的目的需要，否则不得以任何方式修改本文件本身，例如删除版权声明或对互联网协会或其他互联网组织的引用，或者为了将其翻译成非英语语言，必须遵循互联网标准流程中的版权规定。
+
+   上述有限许可是永久性的，不会被互联网协会或其继任者或受让人撤销。
+
+   本文件及其中包含的信息是“按原样”提供的，互联网协会和互联网工程任务组（IETF）对其不作任何明示或暗示的保证，包括但不限于其使用不会侵犯任何权利或暗示的适销性或特定用途的适用性保证。
+
+致谢
+
+   目前，RFC编辑职能由互联网协会提供资金支持。
+```

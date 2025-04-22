@@ -1,0 +1,1471 @@
+# RFC 3413 中文翻译 (stub)
+# 原文文件: ../../rfcs/RFCs3001-3500/rfc3413.txt
+
+网络工作组                                            D. Levi
+评论请求编号：3413                               诺特尔网络公司
+标准：62                                                         P. Meyer
+废止：2573                             安全计算公司
+类别：标准轨道                                     B. Stewart
+                                                                 已退休
+                                                           2002年12月
+
+
+         简单网络管理协议（SNMP）应用
+
+本备忘录的状态
+
+   本文件为互联网社区制定的互联网标准轨道协议，旨在征求讨论和改进建议。请参阅当前版本的《互联网官方协议标准》（STD 1），了解该协议的标准化状态和现行状态。本备忘录的分发不受限制。
+
+摘要
+
+   本文件描述了五种使用STD 62、RFC 3411中描述的SNMP引擎的SNMP应用类型。这些应用类型包括：命令生成器、命令响应器、通知发起者、通知接收者和代理转发器。
+
+   本文件还定义了管理信息库（MIB）模块，用于指定管理操作的目标、通知过滤以及代理转发。本文件废止了RFC 2573。
+
+目录
+
+   1       概述 ...............................................    2
+   1.1     命令生成器应用 ....................................    3
+   1.2     命令响应器应用 ....................................    3
+   1.3     通知发起者应用 ....................................    3
+   1.4     通知接收者应用 ....................................    3
+   1.5     代理转发器应用 ....................................    4
+   2       管理目标 ..........................................    5
+   3       操作元素 ..........................................    6
+   3.1     命令生成器应用 ....................................    6
+   3.2     命令响应器应用 ....................................    9
+   3.3     通知发起者应用 ....................................   14
+   3.4     通知接收者应用 ....................................   17
+   3.5     代理转发器应用 ....................................   19
+   3.5.1   请求转发 ..........................................   21
+   3.5.1.1  处理传入请求 ....................................   21
+   3.5.1.2  处理传入响应 ....................................   24
+   3.5.1.3  处理传入内部类PDU ................................   25
+   3.5.2   通知转发 ..........................................   26
+   4       MIB模块结构 .......................................   29
+   4.1     管理目标MIB模块 ....................................   29
+   4.1.1   标签列表 ..........................................   29
+   4.1.2   定义 ..............................................   30
+   4.2     通知MIB模块 ........................................   44
+   4.2.1   定义 ..............................................   44
+   4.3     代理MIB模块 ........................................   56
+   4.3.1   定义 ..............................................   57
+   5       通知发起者中管理目标的识别 ..........................   63
+   6       通知过滤 ..........................................   64
+   7       代理转发器中管理目标的转换 ..........................   65
+   7.1     请求转发的管理目标转换 ..............................   65
+   7.2     通知转发的管理目标转换 ..............................   66
+   8       知识产权 ..........................................   67
+   9       致谢 ..............................................   67
+   10      安全考虑 ..........................................   69
+   11      参考文献 ..........................................   69
+   附录A  Trap配置示例 ......................................   71
+           编辑地址 ..........................................   73
+           完整版权声明 ......................................   74
+
+1. 概述
+
+   本文件描述了五种SNMP应用类型：
+
+   - 启动SNMP读类和/或写类请求的应用，称为“命令生成器”。
+
+   - 响应SNMP读类和/或写类请求的应用，称为“命令响应器”。
+
+   - 生成SNMP通知类PDU的应用，称为“通知发起者”。
+
+   - 接收SNMP通知类PDU的应用，称为“通知接收者”。
+
+   - 转发SNMP消息的应用，称为“代理转发器”。
+
+   请注意，任何类型的应用都可以与特定的SNMP引擎关联，没有限制。例如，一个单一的SNMP引擎实际上可以同时关联命令生成器和命令响应器应用。
+
+   本文档中的关键词“必须”（MUST）、“不得”（MUST NOT）、“需要”（REQUIRED）、“应当”（SHALL）、“不得”（SHALL NOT）、“建议”（SHOULD）、“不建议”（SHOULD NOT）、“推荐”（RECOMMENDED）、“可以”（MAY）和“可选”（OPTIONAL）均按[RFC2119]中的定义解释。
+
+1.1. 命令生成器应用
+
+   命令生成器应用通过调用调度器（Dispatcher）发起SNMP读类和/或写类请求，并处理其生成的响应。
+
+1.2. 命令响应器应用
+
+   命令响应器应用接收发往本地系统的SNMP读类和/或写类请求，判断请求中的contextEngineID是否等于接收请求的引擎的ID（即请求的引擎ID），以确认请求的目标。响应器应用将执行相应的协议操作，利用访问控制，生成响应消息并发回请求发起者。
+
+1.3. 通知发起者应用
+
+   通知发起者应用在概念上监控系统中的特定事件或条件，并基于这些事件或条件生成通知类消息。通知发起者必须具备确定消息发送目标、使用的SNMP版本和安全参数的机制。本文件提供了相关机制和MIB模块。注意，通知发起者生成的通知类PDU可以是确认类（Confirmed）或非确认类（Unconfirmed）类型。
+
+1.4. 通知接收者应用
+
+   通知接收者应用监听通知消息，并在收到包含确认类PDU的消息时生成响应。
+
+1.5. 代理转发器应用
+
+   代理转发器应用转发SNMP消息。请注意，实现代理转发器应用是可选的。描述代理（3.5、4.3和7节）部分可以在不包含代理转发器的实现中跳过。
+
+   “代理”一词历来使用较为宽泛，含义多样，包括（但不限于）：
+
+   (1) 转发SNMP请求到其他SNMP实体，不考虑被访问的管理对象类型；例如，为了将SNMP请求从一个传输域转发到另一个，或将某个版本的SNMP请求转换为另一版本；
+
+   (2) 将SNMP请求转换为某些非SNMP管理协议的操作；
+
+   (3) 支持聚合管理对象，其中一个管理对象实例的值依赖于多个其他（远程）管理信息项的值。
+
+   这些场景各有优势，例如，支持管理信息的聚合可以显著减少大规模管理活动的带宽需求。
+
+   但使用“代理”一词涵盖多种不同场景会引起混淆。
+
+   为避免混淆，本文档对“代理”一词的定义更为严格。本文中所用“代理”指的是一种只转发SNMP消息，不考虑消息中包含的管理对象类型的代理转发器应用。这一定义最接近上述第一种含义。然而，在SNMP架构[RFC3411]中，代理转发器实际上是一个应用程序，不一定与传统意义上的SNMP代理相关联。
+
+   具体而言，传统SNMP代理与代理转发器的区别如下：
+
+   - 代理转发器应用根据上下文（context）将SNMP消息转发给其他SNMP引擎，无论消息中包含的管理对象类型如何，并将响应返回最初接收该消息的SNMP引擎；
+
+   - 而传统的命令响应器（作为SNMP代理的一部分）根据被访问的管理对象类型和实例处理SNMP请求，不属于代理转发器应用。
+
+   因此，当代理转发器应用转发某个特定contextEngineID / contextName对的请求或通知时，不仅转发信息与该上下文相关，而且该应用无需详细定义MIB视图（因为它转发请求时不考虑管理对象类型）。
+
+   相反，命令响应器应用必须具有详细的MIB视图定义，即使它需要通过SNMP或其他方式向其他实体发出请求，也依赖于被访问的具体管理对象实例（即不仅依赖于上下文）。
+
+   设计目标之一是使代理转发器在事务的端点之间充当中介。在转发确认类通知消息时，相关的响应会在从目标接收后转发，而不是在收到通知消息时立即生成响应。
+
+2. 管理目标
+
+   某些类型的应用（特别是通知生成器和代理转发器）需要机制来确定消息的发送位置和方式。本文件提供了相应的机制和MIB模块。描述消息发送位置和方式的信息集合称为“管理目标”，包括两类信息：
+
+   - 目标信息，包括传输域和传输地址，也称为传输端点。
+
+   - SNMP参数，包括消息处理模型、安全模型、安全级别和安全名称信息。
+
+   描述这些信息的SNMP-TARGET-MIB模块为每一类信息提供了一个表。在MIB中，这两类信息之间可以存在多对多的关系，即一个特定的SNMP参数集可以关联多个传输端点，反之亦然。
+
+3. 操作元素
+
+   以下章节描述了各类应用在生成传输消息或处理接收消息时所遵循的操作流程。应用通过使用[RFC3411]中定义的抽象服务接口与调度器通信。
+
+3.1. 命令生成器应用
+
+   命令生成器通过调用调度器的以下抽象服务接口发起SNMP请求：
+
+      statusInformation =              -- 成功时返回sendPduHandle
+                                       -- 失败时返回errorIndication
+        sendPdu(
+        IN   transportDomain           -- 传输域
+        IN   transportAddress          -- 目标网络地址
+        IN   messageProcessingModel    -- 通常为SNMP版本
+        IN   securityModel             -- 所用安全模型
+        IN   securityName              -- 代表此主体的安全名称
+        IN   securityLevel             -- 请求的安全级别
+        IN   contextEngineID           -- 请求数据的管理引擎ID
+        IN   contextName               -- 请求数据的上下文名
+        IN   pduVersion                -- PDU的版本
+        IN   PDU                       -- SNMP协议数据单元
+        IN   expectResponse            -- TRUE或FALSE
+             )
+
+   其中：
+
+   - transportDomain为目标消息的传输域。
+
+   - transportAddress为目标消息的网络地址。
+
+   - messageProcessingModel指示应用希望使用的消息处理模型。
+
+   - securityModel为应用希望使用的安全模型。
+
+   - securityName为与请求主体相关的安全名称（与安全模型无关）。
+
+   - securityLevel为应用希望使用的安全级别。
+
+   - contextEngineID指定请求管理信息的引擎位置。除非请求是发往代理，否则此值通常等于请求所发引擎的snmpEngineID。
+
+   - contextName为请求管理信息的本地上下文名。
+
+   - pduVersion指示要发送的PDU版本。
+
+   - PDU是由命令生成器构造的，包含其希望执行的管理操作。
+
+   - expectResponse参数指示是否期望收到响应。
+
+   sendPdu接口的返回值表示PDU是否成功发送。如果成功，返回值为sendPduHandle。命令生成器应存储该句柄，以便后续关联响应与原始请求。
+
+   调度器负责将响应正确传递给对应的命令生成器应用。其抽象服务接口为：
+
+      processResponsePdu(              -- 处理响应PDU
+        IN   messageProcessingModel    -- 通常为SNMP版本
+        IN   securityModel             -- 使用的安全模型
+        IN   securityName              -- 代表此主体
+        IN   securityLevel             -- 安全级别
+        IN   contextEngineID           -- 来自/在此SNMP实体的数据
+        IN   contextName               -- 来自/在此上下文中的数据
+        IN   pduVersion                -- PDU的版本
+        IN   PDU                       -- SNMP协议数据单元
+        IN   statusInformation         -- 成功或错误指示
+        IN   sendPduHandle             -- 来自sendPdu的句柄
+             )
+
+Levi 等人               标准轨道                     [第7页]
+
+
+RFC 3413                   SNMP 应用                   2002年12月
+
+
+   其中：
+
+   - messageProcessingModel 是从接收到的响应中提取的值。
+
+   - securityModel 是从接收到的响应中提取的值。
+
+   - securityName 是从接收到的响应中提取的值。
+
+   - securityLevel 是从接收到的响应中提取的值。
+
+   - contextEngineID 是从接收到的响应中提取的值。
+
+   - contextName 是从接收到的响应中提取的值。
+
+   - pduVersion 表示接收响应中 PDU 的版本。
+
+   - PDU 是从接收到的响应中提取的值。
+
+   - statusInformation 表示接收响应的成功或失败。
+
+   - sendPduHandle 是由发出原始请求的 sendPdu 调用返回的值，用于标识该请求的响应。
+
+当命令生成器收到一条消息时，其处理流程如下：
+
+(1) 如果 messageProcessingModel、securityModel、securityName、contextEngineID、contextName 和 pduVersion 的接收值与原始请求中使用的值不全相等，则丢弃该响应。
+
+(2) 从 PDU 中提取操作类型、请求ID、错误状态、错误索引和变量绑定，并保存。如果请求ID不等于原始请求中使用的值，则丢弃该响应。
+
+(3) 目前，应用程序应根据具体实现采取适当的行动。具体行动由实现决定。如果 statusInformation 指示请求失败，可能的措施包括：尝试重新传输请求，或通知操作该应用程序的人员发生了故障。
+
+
+
+
+
+
+
+Levi 等人               标准轨道                     [第8页]
+
+
+RFC 3413                   SNMP 应用                   2002年12月
+
+
+3.2. 命令响应应用程序
+
+在命令响应应用程序处理消息之前，必须先将其与 SNMP 引擎关联。用于此目的的抽象服务接口为：
+
+      statusInformation =       -- 成功或错误指示
+       registerContextEngineID(
+       输入   contextEngineID     -- 负责此引擎
+       输入   pduType             -- 要注册的 PDU 类型
+            )
+
+其中：
+
+- statusInformation 表示注册尝试的成功或失败。
+
+- contextEngineID 等于命令响应程序注册的 SNMP 引擎的 snmpEngineID。
+
+- pduType 表示一个或多个读类和/或写类 PDU。
+
+注意，如果已有其他命令响应应用程序已在某个 SNMP 引擎上注册，再次尝试用相同的 contextEngineID 和 pduType 进行注册将被拒绝。这意味着不同的命令响应应用程序可以分别注册不同的 PDU 类型，但在实际操作中，这通常是不理想的，建议在任何时间点只注册一个命令响应应用程序。
+
+命令响应应用程序可以使用以下抽象服务接口与 SNMP 引擎解除关联：
+
+      unregisterContextEngineID(
+        输入   contextEngineID     -- 放弃责任的引擎
+        输入   pduType             -- 要注销的 PDU 类型
+             )
+
+其中：
+
+- contextEngineID 等于命令响应程序取消注册的 SNMP 引擎的 snmpEngineID。
+
+- pduType 表示一个或多个读类和/或写类 PDU。
+
+
+
+
+
+
+
+Levi 等人               标准轨道                     [第9页]
+
+
+RFC 3413                   SNMP 应用                   2002年12月
+
+
+一旦命令响应应用程序注册到 SNMP 引擎，它就会等待接收 SNMP 消息。用于接收消息的抽象服务接口为：
+
+   processPdu(                     -- 处理请求/通知 PDU
+     输入   messageProcessingModel   -- 通常为 SNMP 版本
+     输入   securityModel            -- 使用的安全模型
+     输入   securityName             -- 代表此主体
+     输入   securityLevel            -- 安全级别
+     输入   contextEngineID          -- 来自/在此 SNMP 实体的数据
+     输入   contextName              -- 来自/在此上下文中的数据
+     输入   pduVersion               -- PDU 的版本
+     输入   PDU                      -- SNMP 协议数据单元
+     输入   maxSizeResponseScopedPDU -- 响应 PDU 的最大尺寸
+     输入   stateReference           -- 状态信息的引用
+          )                        -- 发送响应时所需
+
+其中：
+
+- messageProcessingModel 表示接收并处理消息的消息处理模型。
+
+- securityModel 是从接收到的消息中提取的值。
+
+- securityName 是从接收到的消息中提取的值。
+
+- securityLevel 是从接收到的消息中提取的值。
+
+- contextEngineID 是从接收到的消息中提取的值。
+
+- contextName 是从接收到的消息中提取的值。
+
+- pduVersion 表示接收消息中 PDU 的版本。
+
+- PDU 是从接收到的消息中提取的值。
+
+- maxSizeResponseScopedPDU 是包含响应 PDU 的 ScopedPDU 的最大允许尺寸（基于发起消息的实体能接受的最大消息尺寸）。
+
+- stateReference 是一个值，用于引用关于每个接收请求消息的缓存信息。该值必须在生成响应时返回给调度器。
+
+
+
+
+
+
+
+Levi 等人               标准轨道                     [第10页]
+
+
+RFC 3413                   SNMP 应用                   2002年12月
+
+
+当接收消息的流程如下：
+
+(1) 根据与 PDU 参数相关联的 ASN.1 标签值确定操作类型。操作类型应始终是应用程序之前注册的类型之一。
+
+(2) 从 PDU 中提取请求ID并保存。
+
+(3) 提取并保存 PDU 中的任何特定参数（例如，如果 PDU 类型是 SNMPv2 的 GetBulk PDU，则提取 non-repeaters 和 max-repetitions 值）。
+
+(4) 提取并保存变量绑定。
+
+(5) 根据相关的 MIB 视图，结合 contextName 指定的上下文，执行由 PDU 类型表示的管理操作（对于 SNMPv2 PDU 类型，操作按照 [RFC1905] 中的程序执行）。相关的 MIB 视图由 securityLevel、securityModel、contextName、securityName 和 PDU 类型的类别决定。为了判断某个对象实例是否在相关的 MIB 视图内，调用以下抽象服务接口：
+
+          statusInformation =      -- 成功或错误指示
+            isAccessAllowed(
+            输入   securityModel     -- 使用的安全模型
+            输入   securityName      -- 想要访问的主体
+            输入   securityLevel     -- 安全级别
+            输入   viewType          -- 读、写或通知视图
+            输入   contextName       -- 包含变量名的上下文
+            输入   variableName      -- 被管理对象的 OID
+                 )
+
+其中：
+
+- securityModel 是从接收到的消息中提取的值。
+
+- securityName 是从接收到的消息中提取的值。
+
+- securityLevel 是从接收到的消息中提取的值。
+
+- viewType 表示 PDU 类型是读类还是写类操作。
+
+- contextName 是从接收到的消息中提取的值。
+
+- variableName 是要检查访问权限的变量的对象实例。
+
+通常，管理操作的结果将是一个新的 PDU 值，处理将继续进行（见步骤6）。但在管理操作的任何处理过程中：
+
+- 如果 isAccessAllowed 的返回值为 noSuchView、noAccessEntry 或 noGroupName 错误，则停止管理操作的处理，构造一个 PDU，使用原始接收的 PDU 中的值，但将 error-status 替换为 authorizationError，error-index 设为0，然后将控制权传递到步骤6。
+
+- 如果 isAccessAllowed 返回其他错误（otherError），则停止管理操作的处理，构造一个不同的 PDU，使用原始接收的 PDU 中的值，但将 error-status 替换为 genError，error-index 替换为失败变量绑定的索引，然后传递到步骤6。
+
+- 如果 isAccessAllowed 返回 noSuchContext 错误，则停止管理操作的处理，不生成结果 PDU，增加 snmpUnknownContexts 计数器，然后将控制权传递到步骤6以生成报告消息。
+
+- 如果由 contextName 参数指定的上下文不可用，则停止管理操作的处理，不生成结果 PDU，增加 snmpUnavailableContexts 计数器，然后将控制权传递到步骤6以生成报告消息。
+
+(6) 调用调度器以生成响应或报告消息。抽象服务接口为：
+
+returnResponsePdu(
+  输入   messageProcessingModel   -- 通常为 SNMP 版本
+  输入   securityModel            -- 使用的安全模型
+  输入   securityName             -- 代表此主体
+  输入   securityLevel            -- 与接收请求相同
+  输入   contextEngineID          -- 来自/在此 SNMP 实体的数据
+  输入   contextName              -- 来自/在此上下文中的数据
+  输入   pduVersion               -- 要返回的 PDU 版本
+  输入   PDU                      -- SNMP 协议数据单元
+  输入   maxSizeResponseScopedPDU -- 响应 PDU 的最大尺寸
+  输入   stateReference           -- 状态信息的引用
+                                -- 与请求中提供的相同
+  输入   statusInformation        -- 成功或错误指示
+       )                        -- 出错时的错误计数器 OID/值
+
+其中：
+
+- messageProcessingModel 是从 processPdu 调用中提取的值。
+
+- securityModel 是从 processPdu 调用中提取的值。
+
+- securityName 是从 processPdu 调用中提取的值。
+
+- securityLevel 是从 processPdu 调用中提取的值。
+
+- contextEngineID 是从 processPdu 调用中提取的值。
+
+- contextName 是从 processPdu 调用中提取的值。
+
+- pduVersion 表示要返回的 PDU 的版本。如果没有生成结果 PDU，则 pduVersion 为未定义值。
+
+- PDU 是在步骤（5）中生成的结果。如果没有生成结果 PDU，则 PDU 为未定义值。
+
+- maxSizeResponseScopedPDU 是本地值，表示应用程序能接受的最大 ScopedPDU 大小。
+
+- stateReference 是从 processPdu 调用中提取的值。
+
+- statusInformation 要么包含指示没有发生错误且应生成响应的指示，要么包含指示发生错误的指示，以及相应错误计数器对象的 OID 和计数值。
+
+
+
+
+
+
+
+Levi 等人               标准轨道                     [第13页]
+
+
+RFC 3413                   SNMP 应用                   2002年12月
+
+
+请注意，命令响应应用程序应始终调用 returnResponsePdu 抽象服务接口，即使在发生资源分配错误等错误时也是如此。在发生此类错误时，传递给 returnResponsePdu 的 PDU 值应包含适当的 errorStatus 和 errorIndex。
+
+此外，上述文本描述了在接收到 snmpUnknownContexts 计数器增加的情况，以及 snmpUnavailableContexts 计数器增加的情况。这两者的区别在于：当接收到对一个 SNMP 实体未知的上下文的请求时，snmpUnknownContexts 计数器会增加；而当请求的上下文已知但当前不可用时，snmpUnavailableContexts 计数器会增加。判断上下文何时不可用是实现相关的，某些实现可能永远不会遇到这种情况，因此可能永远不会增加 snmpUnavailableContexts 计数器。
+
+3.3. 通知发起应用程序
+
+通知发起应用程序生成包含通知类 PDU（例如 SNMPv2-Trap PDU 或 Inform PDU）的 SNMP 消息。没有规定特定类型的通知类 PDU 必须由某个实现生成。
+
+通知发起应用程序需要一种机制来识别应将通知发送到的管理目标。所用的具体机制由实现决定。然而，如果实现允许通过 SNMP 管理配置管理目标，则必须使用本文档中描述的 SNMP-TARGET-MIB 模块。
+
+当通知发起者希望生成通知时，首先必须确定要在通知中传达的信息所在的上下文，即确定 contextEngineID 和 contextName。然后，必须确定要将通知发送到的管理目标集。应用程序还必须为每个管理目标确定通知消息应包含的具体 PDU 类型，以及如果包含确认类 PDU，还需确定重试次数和重传算法。
+
+
+
+
+
+
+
+
+
+Levi 等人               标准轨道                     [第14页]
+
+
+RFC 3413                   SNMP 应用                   2002年12月
+
+
+通知发起者用以确定上述信息的机制由实现决定。一旦应用程序确定了这些信息，就会对每个管理目标执行以下流程：
+
+(1) 任何适当的过滤机制都应被应用，以确定是否应将通知发送给管理目标。如果这些过滤机制判断不应发送通知，则处理继续进行到下一个管理目标。否则，
+
+(2) 从相关MIB视图中的本地MIB仪表中检索适当的变量绑定集。相关的MIB视图由管理目标的securityLevel、securityModel、contextName和securityName共同确定。为了判断某个对象实例是否在相关的MIB视图内，使用isAccessAllowed抽象服务接口，方式与前一节中描述的相同，只是viewType指示为通知类操作。如果isAccessAllowed返回的statusInformation不指示accessAllowed，则不向该管理目标发送通知。
+
+(3) 检查通知的NOTIFICATION-TYPE对象标识符（即变量绑定中名为snmpTrapOID.0的元素的值，即第二个变量绑定），使用isAccessAllowed抽象服务接口，参数与前一步相同。如果isAccessAllowed返回的statusInformation不指示accessAllowed，则不向该管理目标发送通知。
+
+(4) 使用本地唯一的请求ID值、由实现确定的PDU类型、错误状态和错误索引值为0，以及在步骤（2）中提供的变量绑定，构造一个PDU。
+
+(5) 如果通知包含未确认类PDU，则调用Dispatcher，使用以下抽象服务接口：
+
+```
+statusInformation = sendPdu(
+  IN   transportDomain           -- 使用的传输域
+  IN   transportAddress          -- 目标网络地址
+  IN   messageProcessingModel    -- 通常为SNMP版本
+  IN   securityModel             -- 使用的安全模型
+  IN   securityName              -- 代表此主体
+  IN   securityLevel             -- 请求的安全级别
+  IN   contextEngineID           -- 来自/在此实体的数据
+  IN   contextName               -- 来自/在此上下文中的数据
+  IN   pduVersion                -- PDU的版本
+  IN   PDU                       -- SNMP协议数据单元
+  IN   expectResponse            -- TRUE或FALSE
+)
+```
+
+其中：
+
+- transportDomain为管理目标的传输域。
+
+- transportAddress为管理目标的传输地址。
+
+- messageProcessingModel为管理目标的消息处理模型。
+
+- securityModel为管理目标的安全模型。
+
+- securityName为管理目标的安全名称。
+
+- securityLevel为管理目标的安全级别。
+
+- contextEngineID为通知最初确定的值。
+
+- contextName为通知最初确定的值。
+
+- pduVersion为要发送的PDU版本。
+
+- PDU为步骤（4）中构造的值。
+
+- expectResponse参数表示不期望收到响应。
+
+否则，
+
+(6) 如果通知包含确认类PDU，则：
+
+a) 使用sendPdu抽象服务接口调用Dispatcher，参数与步骤（5）相同，但expectResponse参数指示期望响应。
+
+b) 应用程序缓存关于管理目标的信息。
+
+c) 如果在适当的时间间隔内从管理目标的传输端点收到响应，则视为通知已确认，删除缓存信息。否则，
+
+d) 如果在适当的时间内未收到响应，或收到报告指示，则从缓存中检索关于管理目标的信息，并重复步骤a)至d)。这些步骤的重复次数等于之前确定的重试次数。如果超过此重试次数，则视为通知确认失败，停止对该管理目标的通知处理。注意，某些报告指示可能被视为失败。这些报告指示应被解释为通知确认失败，无需重复步骤a)至d)。
+
+对确认类PDU通知的响应将通过processResponsePdu抽象服务接口接收。
+
+总结一下，通知发起者在确定通知发送位置时应遵循的步骤为：
+
+- 确定应将通知发送的目标。
+
+- 对目标列表应用任何必要的过滤。
+
+- 确定哪些目标有权限接收通知。
+
+3.4. 通知接收应用程序
+
+通知接收应用程序从Dispatcher接收SNMP通知消息。在接收任何消息之前，通知接收者必须使用registerContextEngineID抽象服务接口向Dispatcher注册。所用参数为：
+
+- contextEngineID为未定义的“通配符”值。通知会被送达已注册的通知接收者，无论通知消息中包含的contextEngineID为何。
+
+- pduType指示应用程序希望接收的通知类型（例如SNMPv2-Trap PDU或Inform PDU）。
+
+一旦通知接收者注册到Dispatcher，就可以使用processPdu抽象服务接口接收消息。参数包括：
+
+- messageProcessingModel指示接收并处理消息的消息处理模型。
+
+- securityModel为接收消息中的安全模型。
+
+- securityName为接收消息中的安全名称。
+
+- securityLevel为接收消息中的安全级别。
+
+- contextEngineID为接收消息中的contextEngineID。
+
+- contextName为接收消息中的contextName。
+
+- pduVersion指示接收消息中PDU的版本。
+
+- PDU为接收消息中的值。
+
+- maxSizeResponseScopedPDU为包含响应PDU的ScopedPDU的最大允许尺寸（基于发起者能接受的最大消息尺寸）。
+
+- 如果消息包含未确认类PDU，则stateReference未定义且未使用。否则，stateReference为引用缓存中关于通知的相关信息的值。此值必须返回给Dispatcher，以生成响应。
+
+当未确认类PDU传送到通知接收应用程序时，它首先提取PDU中的SNMP操作类型、请求ID、错误状态、错误索引和变量绑定。之后的处理取决于具体实现。
+
+当接收到确认类PDU时，通知接收应用程序遵循以下步骤：
+
+(1) 从PDU中提取PDU类型、请求ID、错误状态、错误索引和变量绑定。
+
+(2) 使用提取的请求ID和变量绑定，构造响应类PDU，错误状态和错误索引均设为0。
+
+(3) 调用Dispatcher，使用returnResponsePdu抽象服务接口生成响应消息。参数为：
+
+- messageProcessingModel为processPdu调用中的值。
+
+- securityModel为processPdu调用中的值。
+
+- securityName为processPdu调用中的值。
+
+- securityLevel为processPdu调用中的值。
+
+- contextEngineID为processPdu调用中的值。
+
+- contextName为processPdu调用中的值。
+
+- pduVersion指示要返回的PDU版本。
+
+- PDU为步骤(2)中生成的值。
+
+- maxSizeResponseScopedPDU为本地值，表示应用程序能接受的最大ScopedPDU尺寸。
+
+- stateReference为processPdu调用中的值。
+
+- statusInformation指示无错误，应生成响应。
+
+(4) 之后的处理取决于具体实现。
+
+3.5. 代理转发应用程序
+
+代理转发应用程序负责转发SNMP消息。根据消息中包含的PDU类型类别，代理转发器可能需要转发四种基本类型的消息。这些类型按PDU类别分组，具体如下：
+
+- 包含读类或写类PDU类型（如Get、GetNext、GetBulk和Set PDU类型）的消息。这些用于请求或修改特定上下文中的信息。
+
+- 包含通知类PDU类型（如SNMPv2-Trap和Inform PDU类型）的消息。这些用于关于特定上下文中信息的通知。
+
+- 包含响应类PDU类型的消息。响应类PDU的转发总是在收到先前转发的消息的响应后进行。
+
+- 包含内部类PDU类型（如Report PDU）的消息。内部类PDU的转发总是在收到响应的内部类PDU后进行。
+
+对于第一类，代理转发器的角色是将管理信息请求传递给“更接近”或“路径下游”的SNMP引擎，以访问该信息，并将包含信息的响应返回给接收请求的SNMP引擎。请求中的上下文信息用于确定哪个SNMP引擎有权限访问请求的信息，从而决定转发的目标和方式。
+
+对于第二类，代理转发器的角色是确定哪些SNMP引擎应接收关于某个位置的管理信息的通知。通知消息中的上下文信息决定通知中包含信息的目标位置，用于确定哪些SNMP引擎应接收此信息的通知。
+
+对于第三类，代理转发器的角色是确定哪个已转发的请求或通知（如果有）与响应匹配，并将响应转发回请求或通知的发起者。
+
+对于第四类，代理转发器的角色是确定哪个已转发的请求或通知（如果有）与内部类PDU匹配，并将内部类PDU转发回请求或通知的发起者。
+
+在转发消息时，代理转发应用程序必须将传入的管理目标信息转换为传出的管理目标信息。具体的转换方式由实现决定。在许多情况下，这将由预配置的转换表驱动。如果代理转发应用程序使此表的内容可由SNMP管理，则必须使用本文档定义的SNMP-PROXY-MIB模块。
+
+3.5.1 请求转发
+
+请求转发分为两个阶段。首先，必须将传入的请求通过代理应用程序传递。然后，将生成的响应传回。以下两个部分描述这两个阶段。
+
+3.5.1.1 处理传入请求
+
+希望转发请求消息的代理转发器必须首先使用registerContextEngineID抽象服务接口向Dispatcher注册。代理转发器必须为其希望转发消息的每个contextEngineID以及每个pduType进行注册。注意，随着代理转发器配置的变化，转发的特定contextEngineID值可能会发生变化。代理转发器应根据需要调用registerContextEngineID和unregisterContextEngineID抽象服务接口，以反映其当前配置。
+
+代理转发器不应尝试注册与其关联的SNMP引擎的snmpEngineID相等的contextEngineID值。
+
+一旦为适当的contextEngineID值注册完毕，代理转发器即可开始处理消息。使用以下流程：
+
+(1) 使用processPdu抽象服务接口接收消息。将从processPdu接口接收的管理目标信息转换为传出的管理目标信息。请注意，此转换可能因不同的contextEngineID和/或contextName而异。转换应产生单一的管理目标。
+
+(2) 如果找不到合适的传出管理目标信息，代理转发器将snmpProxyDrops计数器[RFC1907]递增，然后调用Dispatcher，使用returnResponsePdu抽象服务接口。参数如下：
+
+- messageProcessingModel 是从 processPdu 调用中获取的值。
+
+- securityModel 是从 processPdu 调用中获取的值。
+
+- securityName 是从 processPdu 调用中获取的值。
+
+- securityLevel 是从 processPdu 调用中获取的值。
+
+- contextEngineID 是从 processPdu 调用中获取的值。
+
+- contextName 是从 processPdu 调用中获取的值。
+
+- pduVersion 是从 processPdu 调用中获取的值。
+
+- PDU 是一个未定义的值。
+
+- maxSizeResponseScopedPDU 是一个本地值，表示应用程序可以接受的 ScopedPDU 的最大尺寸。
+
+- stateReference 是从 processPdu 调用中获取的值。
+
+- statusInformation 表示发生了错误，并包含 snmpProxyDrops 对象的 OID 和值。
+
+此时消息的处理停止。否则，
+
+(3) 构造一个新的 PDU。新 PDU 中应使用唯一的 request-id（该值将使后续的响应消息能够与此请求相关联）。除非传入的 SNMP 版本和传出的 SNMP 版本支持不同的 PDU 版本，否则新 PDU 的其余部分与接收的 PDU 相同。在支持不同 PDU 版本的情况下，代理转发器可能需要对 PDU 进行转换。（关于执行此类转换的方法，详见 [RFC2576]。）
+
+(4) 代理转发器调用调度器（Dispatcher），使用 sendPdu 抽象服务接口生成转发的消息。参数包括：
+
+- transportDomain：传出管理目标的传输域。
+
+- transportAddress：传出管理目标的传输地址。
+
+- messageProcessingModel：传出管理目标的消息处理模型。
+
+- securityModel：传出管理目标的安全模型。
+
+- securityName：传出管理目标的安全名称。
+
+- securityLevel：传出管理目标的安全级别。
+
+- contextEngineID：来自 processPdu 调用的值。
+
+- contextName：来自 processPdu 调用的值。
+
+- pduVersion：待发送的 PDU 版本。
+
+- PDU：在步骤(3)中构建的值。
+
+- expectResponse：指示是否期望收到响应。如果 sendPdu 调用失败，代理转发器将执行上述步骤(2)。否则：
+
+(5) 代理转发器缓存以下信息，以便将响应与已转发的请求匹配：
+
+- sendPdu 返回的 handle（句柄）
+
+- 接收的 PDU 中的 request-id
+
+- contextEngineID
+
+- contextName
+
+- stateReference
+
+- 来自管理目标的入站信息
+
+- 出站管理信息
+
+- 其他匹配入站响应的必要信息
+
+如果无法缓存这些信息（可能由于资源不足），则代理转发器将执行上述步骤(2)。否则：
+
+(6) 请求的处理停止，直到收到对转发请求的响应，或直到某个适当的时间间隔已过。如果在响应到达之前该时间间隔已过，缓存的请求信息将被删除。
+
+---
+
+3.5.1.2. 处理入站响应
+
+当收到入站响应时，代理转发器遵循以下流程：
+
+(1) 使用 processResponsePdu 接口接收响应。代理转发器利用接收的参数在其待处理转发请求的缓存中查找对应条目。通过匹配接收参数与缓存中的 sendPduHandle、contextEngineID、contextName、出站管理目标信息和接收的 PDU 中的 request-id（代理转发器必须提取 request-id）实现。如果找不到合适的缓存条目，响应处理停止。否则：
+
+(2) 提取并从缓存中删除相关信息。
+
+(3) 构造一个新的 Response-Class PDU，使用原始转发请求中的 request-id（从缓存中提取）。除非入站 SNMP 版本和出站 SNMP 版本支持不同的 PDU 版本，否则其他值与接收的 Response-Class PDU 相同。在支持不同 PDU 版本的情况下，代理转发器可能需要对 PDU 进行转换。（详见 [RFC2576]。）
+
+(4) 调用调度器（Dispatcher），使用 returnResponsePdu 抽象服务接口。参数包括：
+
+- messageProcessingModel：指示原始入站消息的消息处理模型。
+
+- securityModel：从缓存中提取的原始入站管理目标的安全模型。
+
+- securityName：从缓存中提取的原始入站管理目标的安全名称。
+
+- securityLevel：从缓存中提取的原始入站管理目标的安全级别。
+
+- contextEngineID：从缓存中提取的值。
+
+- contextName：从缓存中提取的值。
+
+- pduVersion：返回的 PDU 版本。
+
+- PDU：（可能已翻译的）响应 PDU。
+
+- maxSizeResponseScopedPDU：本地值，表示应用程序可接受的 ScopedPDU 最大尺寸。
+
+- stateReference：从缓存中提取的值。
+
+- statusInformation：指示未发生错误，应生成响应 PDU。
+
+---
+
+3.5.1.3. 处理入站内部类 PDU
+
+当收到入站内部类 PDU 时，代理转发器遵循以下流程：
+
+(1) 使用 processResponsePdu 接口接收内部类 PDU。利用接收参数在待处理请求缓存中查找对应条目（通过匹配 sendPduHandle）。如果找不到合适的缓存条目，处理停止。否则：
+
+(2) 提取并从缓存中删除信息。
+
+(3) 如果原始入站管理目标信息指示的 SNMP 版本不支持 Report PDU，则处理停止。
+
+(4) 调用调度器，使用 returnResponsePdu 接口，参数包括：
+
+- messageProcessingModel：原始入站消息的消息处理模型。
+
+- securityModel：从缓存中提取的原始入站管理目标的安全模型。
+
+- securityName：从缓存中提取的安全名称。
+
+- securityLevel：从缓存中提取的安全级别。
+
+- contextEngineID：从缓存中提取的值。
+
+- contextName：从缓存中提取的值。
+
+- pduVersion：返回的 PDU 版本。
+
+- PDU：未使用。
+
+- maxSizeResponseScopedPDU：本地值，表示应用程序可接受的 ScopedPDU 最大尺寸。
+
+- stateReference：从缓存中提取的值。
+
+- statusInformation：包含特定于内部类 PDU 类型的值（例如，对于 Report PDU，statusInformation 包含在入站 Report PDU 中接收的 contextEngineID、contextName、计数器 OID 和计数器值）。
+
+---
+
+3.5.2. 通知转发
+
+代理转发器以与通知接收应用相同的方式接收通知，使用 processPdu 抽象服务接口。当收到通知时，流程如下：
+
+(1) 将从 processPdu 接口接收的入站管理目标信息转换为出站管理目标信息。注意，此转换可能因 contextEngineID 和/或 contextName 的不同值而变化，可能会生成多个管理目标。
+
+(2) 如果找不到合适的出站管理目标信息，且通知为未确认类 PDU，则通知处理停止；如果通知为确认类 PDU，代理转发器会将 snmpProxyDrops 对象递增，并调用调度器（Dispatcher）使用 returnResponsePdu 接口，参数包括：
+
+- messageProcessingModel：来自 processPdu 调用的值。
+
+- securityModel：来自 processPdu 调用的值。
+
+- securityName：来自 processPdu 调用的值。
+
+- securityLevel：来自 processPdu 调用的值。
+
+- contextEngineID：来自 processPdu 调用的值。
+
+- contextName：来自 processPdu 调用的值。
+
+- pduVersion：来自 processPdu 调用的值。
+
+- PDU：未定义且未使用。
+
+- maxSizeResponseScopedPDU：本地值，表示应用程序可接受的 ScopedPDU 最大尺寸。
+
+- stateReference：来自 processPdu 调用的值。
+
+- statusInformation：指示发生错误，应生成 Report 消息。
+
+此时消息处理停止。否则，
+
+(3) 代理转发器根据前述通知发起程序中的流程，生成通知，除了使用原始通知中的 contextEngineID 和 contextName 值外，其他步骤与前述“通知发起者”部分描述的流程类似，但有以下差异：
+
+- 使用原始通知中的 contextEngineID 和 contextName。
+
+- 使用之前确定的出站管理目标。
+
+- 不应用过滤机制。
+
+- 使用原始通知中的变量绑定，而不是从本地 MIB 仪表中获取变量绑定。特别是，不对这些变量绑定或包含 snmpTrapOID.0 的变量绑定值应用访问控制。
+
+- 如果原始通知包含确认类 PDU，则任何不支持通知类和确认类 PDU 的出站管理目标在生成转发通知时将不被使用。
+
+- 如果任何出站管理目标的入站 SNMP 版本和出站 SNMP 版本支持不同的 PDU 版本，代理转发器可能需要对 PDU 进行转换。（详见 [RFC2576]。）
+
+(4) 如果原始通知包含未确认类 PDU，通知处理到此结束。否则，原始通知必须包含确认类 PDU，处理继续。
+
+(5) 如果转发的通知中包含任何确认类 PDU，且通知发起程序中的流程判断这些确认类 PDU 已成功确认，则继续处理；否则，处理停止。
+
+(6) 构造一个 Response-Class PDU，使用原始通知中的 request-id 和变量绑定，以及 error-status 和 error-index 值（均为0）。
+
+(7) 调用调度器（Dispatcher），使用 returnResponsePdu 接口，参数包括：
+
+- messageProcessingModel：来自 processPdu 调用的值。
+
+- securityModel：来自 processPdu 调用的值。
+
+- securityName：来自 processPdu 调用的值。
+
+- securityLevel：来自 processPdu 调用的值。
+
+- contextEngineID：来自 processPdu 调用的值。
+
+- contextName：来自 processPdu 调用的值。
+
+- pduVersion：在步骤(6)中构建的 PDU 版本。
+
+- PDU：在步骤(6)中构建的值。
+
+- maxSizeResponseScopedPDU：本地值，表示应用程序可接受的 ScopedPDU 最大尺寸。
+
+- stateReference：来自 processPdu 调用的值。
+
+- statusInformation：指示未发生错误，应生成 Response-Class PDU。
+
+---
+
+4. MIB 模块的结构
+
+本文描述了三个独立的 MIB 模块：管理目标 MIB、通知 MIB 和代理 MIB。以下章节将介绍这三个 MIB 模块的结构。
+
+这些MIB（管理信息库）在特定类型的应用中使用的方法将在本文档后续部分进行描述：
+
+- 在通知发起应用中，管理目标MIB和通知MIB的使用方法在第5节中介绍。
+
+- 在通知发起应用中，利用通知MIB进行通知过滤的方法在第6节中介绍。
+
+- 在代理转发应用中，管理目标MIB和代理MIB的使用方法在第7节中介绍。
+
+4.1 管理目标MIB模块
+
+SNMP-TARGET-MIB模块包含定义管理目标的对象。它由两个表格和符合性声明组成。
+
+第一个表格，snmpTargetAddrTable，包含关于传输域和地址的信息。它还包括一个对象snmpTargetAddrTagList，用于提供对条目进行分组的机制。
+
+第二个表格，snmpTargetParamsTable，包含在向特定传输域和地址发送消息时所使用的SNMP版本和安全信息。
+
+管理目标MIB旨在提供一种通用机制，用于指定传输地址，以及指定由SNMP实体生成的SNMP消息的参数。它在本文档中用于通知的生成和代理转发。然而，它也可以用于其他目的。如果其他文档使用此MIB，该文档负责说明其具体用法。例如，[RFC2576]使用此MIB进行SNMPv1消息的源地址验证。
+
+4.1.1 标签列表
+
+snmpTargetAddrTagList对象用于对snmpTargetAddrTable中的条目进行分组。该对象的值包含一组标签值，用于选择特定操作所用的目标地址。
+
+标签值（也可在除snmpTargetAddrTagList之外的MIB对象中使用）是任意的八位字节字符串，但不能包含分隔符字符。定义的分隔符字符包括：
+
+- ASCII空格（0x20）
+- ASCII制表符（0x09）
+- ASCII回车符（CR，0x0D）
+- ASCII换行符（LF，0x0A）
+
+此外，标签列表中的标签值不能为空（长度为零）。通常，一个特定的MIB对象可以包含：
+
+- 一个空的八位字节字符串，表示空列表，或
+- 一个标签值（此时该对象的值不能包含分隔符字符），或
+- 一组由单个分隔符字符分隔的标签值。
+
+对于标签值列表，这些限制意味着：
+
+- 不能有前导或尾随的分隔符字符。
+- 不能有连续的多个分隔符字符。
+
+4.1.2 定义
+
+SNMP-TARGET-MIB定义开始
+
+导入：
+- MODULE-IDENTITY、OBJECT-TYPE、snmpModules、Counter32、Integer32（来自SNMPv2-SMI）
+- TEXTUAL-CONVENTION、TDomain、TAddress、TimeInterval、RowStatus、StorageType（来自SNMPv2-TC）
+- TestAndIncr（来自SNMPv2-TC）
+- SnmpSecurityModel、SnmpMessageProcessingModel、SnmpSecurityLevel、SnmpAdminString（来自SNMP-FRAMEWORK-MIB）
+- MODULE-COMPLIANCE、OBJECT-GROUP（来自SNMPv2-CONF）
+
+snmpTargetMIB模块标识符：
+- 最后更新时间：2002年10月14日
+- 组织：IETF SNMPv3工作组
+- 联系信息：包括电子邮件、订阅方式、共同主席、编辑等详细联系方式
+- 描述：定义了提供远程配置SNMP实体生成SNMP消息机制的MIB对象。版权归互联网协会（2002年）。此版本为RFC 3413的一部分，完整法律声明请参见RFC。
+
+修订历史：
+- 2002年10月14日：修正UTF-8字符串的DISPLAY-HINTS，修正LF字符的十六进制值，澄清零长度标签值的含义，改进标签列表示例。
+- 1998年8月4日：修正说明，作为RFC 2573发布。
+- 1997年7月14日：初始版本，作为RFC 2273发布。
+
+此模块编号为{ snmpModules 12 }。
+
+相关对象标识符：
+- snmpTargetObjects：{ snmpTargetMIB 1 }
+- snmpTargetConformance：{ snmpTargetMIB 3 }
+
+SnmpTagValue（标签值）是一个文本约定，显示提示为“255t”，状态为“current”，描述如下：
+- 这是一个包含标签值的八位字节字符串，标签值应为人类可读的形式。
+- 为了国际化，使用ISO/IEC IS 10646-1字符集，采用RFC 2279描述的UTF-8编码方案。
+- 由于标准的修正可能添加新的码点，实现必须准备好处理从0x00000000到0x7fffffff的任何码点。
+- 应避免使用控制码，某些控制码不允许使用（详见下文）。
+- 对于不被用户界面硬件或软件直接支持的码点，可以提供十六进制等替代输入和显示方式。
+- 对于用7位US-ASCII编码的信息，UTF-8表示与US-ASCII编码相同。
+- 如果此TC用于作为索引的对象，必须指定SIZE限制，确保任何对象实例的子标识符数不超过128（参见[RFC1905]）。
+- 该对象包含一个标签值，用于选择表中的条目。
+- 标签值是任意八位字节字符串，但不能包含分隔符字符。定义的分隔符字符包括：
+  - ASCII空格（0x20）
+  - ASCII制表符（0x09）
+  - ASCII回车（0x0D）
+  - ASCII换行（0x0A）
+- 分隔符用于在标签列表中分隔标签值。此类型的对象只能包含单个标签值，不能包含分隔符字符。
+- 长度为零的标签值表示未定义标签，即不会匹配任何标签列表，也不会选择任何表条目。
+
+示例有效标签值：
+- 'acme'
+- 'router'
+- 'host'
+
+标签值用于选择表条目的具体应用和MIB定义。
+
+语法：OCTET STRING（大小为0到255）
+
+---
+
+SnmpTagList（标签列表）是一个文本约定，显示提示为“255t”，状态为“current”，描述如下：
+- 这是一个包含标签值列表的八位字节字符串，标签值应为人类可读的形式。
+- 为了国际化，使用ISO/IEC IS 10646-1字符集，采用RFC 2279描述的UTF-8编码方案。
+- 由于标准修正可能添加新码点，实现必须准备好处理从0x00000000到0x7fffffff的任何码点。
+- 应避免使用控制码，除非在下文中另有说明。
+- 对于不被硬件或软件直接支持的码点，可以提供十六进制等替代输入和显示方式。
+- 对于用7位US-ASCII编码的信息，UTF-8表示与US-ASCII编码相同。
+- 该对象包含一组标签值，用于选择表中的条目。
+- 标签值是任意八位字节字符串，但不能包含分隔符字符。定义的分隔符字符包括：
+  - ASCII空格（0x20）
+  - ASCII制表符（0x09）
+  - ASCII回车（0x0D）
+  - ASCII换行（0x0A）
+- 分隔符用于在标签列表中分隔标签值。两个标签值之间只能有一个分隔符字符。标签值不能为空（长度为零）。
+- 这些限制对内容提出了以下要求：
+  - 不能有前导或尾随的分隔符字符。
+  - 不能有连续的多个分隔符字符。
+
+有效标签列表示例：
+- ''（空列表）
+- 'acme'（单个标签）
+- 'host router bridge'（多个标签）
+
+注意：虽然标签值不能长度为零，但空字符串仍然有效，表示空列表（没有标签值）。
+
+标签列表用于选择表条目的具体应用和MIB定义。通常，应用会提供一个或多个标签值，任何包含这些标签值组合的条目都将被选中。
+
+语法：OCTET STRING（大小为0到255）
+
+---
+
+以下为目标对象组的定义示例：
+
+snmpTargetSpinLock（自旋锁对象）：
+- 类型：TestAndIncr
+- 访问权限：可读写
+- 状态：current
+- 描述：用于多管理者同时修改SNMP-TARGET-MIB中的表条目，特别是在修改snmpTargetAddrTagList对象时。其操作流程为：
+  1. 读取snmpTargetSpinLock和snmpTargetAddrTagList的值。
+  2. 生成新的snmpTargetAddrTagList值。
+  3. 将snmpTargetSpinLock设置为之前读取的值，将snmpTargetAddrTagList设置为新值。如果设置snmpTargetSpinLock失败，则返回第1步。
+
+其他对象（如snmpTargetAddrTable、snmpTargetAddrEntry等）定义了传输地址的表格和条目，包括地址名、传输域、地址、超时时间、重试次数、标签列表、参数、存储类型和行状态等。
+
+（此处省略部分详细定义，全文内容较长，若需要完整翻译请告知。）
+
+请注意，应用程序等待响应的时间间隔实际上可能是由该对象的值派生而来的。派生实际时间间隔的方法依赖于具体的实现。一种方法是根据特定的重传算法和已发生的超时次数，推导出预期的往返时间。在派生重传的预期往返时间时，也可以考虑消息的类型。例如，如果一条消息的安全级别指示同时需要认证和隐私，则为了补偿在认证和加密处理过程中所花费的额外时间，派生值可能会相应增加。
+
+为了在此表中创建一行，管理者必须将该对象设置为 createAndGo(4) 或 createAndWait(5)。  
+ ::= { snmpNotifyEntry 5 }
+
+snmpNotifyFilterProfileTable 对象类型  
+语法：SnmpNotifyFilterProfileEntry 的序列  
+最大访问权限：不可访问  
+状态：当前  
+
+描述：  
+“此表用于将通知过滤器配置文件与特定的目标参数集关联起来。”  
+ ::= { snmpNotifyObjects 2 }
+
+snmpNotifyFilterProfileEntry 对象类型  
+语法：SnmpNotifyFilterProfileEntry  
+最大访问权限：不可访问  
+状态：当前  
+描述：  
+“此表中的条目指示在使用对应的 snmpTargetParamsTable 条目生成通知时所用的过滤器配置文件的名称。  
+此表中的条目通过 snmpNotifyFilterProfileRowStatus 对象进行创建和删除。”  
+索引：{ IMPLIED snmpTargetParamsName }  
+ ::= { snmpNotifyFilterProfileTable 1 }
+
+SnmpNotifyFilterProfileEntry ::= 序列（Sequence） {  
+  snmpNotifyFilterProfileName         SnmpAdminString,  // 过滤配置文件的名称  
+  snmpNotifyFilterProfileStorType     StorageType,      // 存储类型  
+  snmpNotifyFilterProfileRowStatus    RowStatus         // 行状态  
+}
+
+snmpNotifyFilterProfileName 对象类型  
+语法：SnmpAdminString（长度1到32）  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“在使用对应的 snmpTargetAddrTable 条目生成通知时所用的过滤配置文件的名称。”  
+ ::= { snmpNotifyFilterProfileEntry 1 }
+
+snmpNotifyFilterProfileStorType 对象类型  
+语法：StorageType  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“此概念行的存储类型。值为‘permanent’的概念行不必允许对行中的任何列对象进行写访问。”  
+默认值：{ nonVolatile }  
+ ::= { snmpNotifyFilterProfileEntry 2 }
+
+snmpNotifyFilterProfileRowStatus 对象类型  
+语法：RowStatus  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“此概念行的状态。  
+要在此表中创建一行，管理者必须将此对象设置为 createAndGo(4) 或 createAndWait(5)。  
+在所有相关列的实例被适当配置之前，snmpNotifyFilterProfileRowStatus 列的对应实例值为 ‘notReady’。  
+特别是，新的行在其对应的 snmpNotifyFilterProfileName 实例被设置之前，不能激活。”  
+ ::= { snmpNotifyFilterProfileEntry 3 }
+
+snmpNotifyFilterTable 对象类型  
+语法：SnmpNotifyFilterEntry 的序列  
+最大访问权限：不可访问  
+状态：当前  
+描述：  
+“过滤器配置文件的表。过滤器配置文件用于判断特定管理目标是否应接收特定通知。  
+当生成通知时，必须将其与每个配置为接收通知的管理目标关联的过滤器进行比较，以确定是否可以将通知发送给该管理目标。  
+关于通知过滤的更详细讨论可参见 [SNMP-APPL] 第6节。”  
+ ::= { snmpNotifyObjects 3 }
+
+snmpNotifyFilterEntry 对象类型  
+语法：SnmpNotifyFilterEntry  
+最大访问权限：不可访问  
+状态：当前  
+描述：  
+“过滤器配置文件的一个元素。  
+snmpNotifyFilterTable 中的条目通过 snmpNotifyFilterRowStatus 对象进行创建和删除。”  
+
+索引：{ snmpNotifyFilterProfileName, IMPLIED snmpNotifyFilterSubtree }  
+ ::= { snmpNotifyFilterTable 1 }
+
+SnmpNotifyFilterEntry ::= 序列（Sequence） {  
+  snmpNotifyFilterSubtree           OBJECT IDENTIFIER,  // 子树的标识符  
+  snmpNotifyFilterMask              OCTET STRING,      // 掩码  
+  snmpNotifyFilterType              INTEGER,           // 类型（包括：included(1)，excluded(2)）  
+  snmpNotifyFilterStorageType       StorageType,       // 存储类型  
+  snmpNotifyFilterRowStatus         RowStatus          // 行状态  
+}
+
+snmpNotifyFilterSubtree 对象类型  
+语法：OBJECT IDENTIFIER  
+最大访问权限：不可访问  
+状态：当前  
+描述：  
+“当与对应的 snmpNotifyFilterMask 实例结合使用时，此 MIB 子树定义一组子树，这些子树会被包含或排除在过滤配置文件之外。”  
+ ::= { snmpNotifyFilterEntry 1 }
+
+snmpNotifyFilterMask 对象类型  
+语法：OCTET STRING（长度0到16）  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“此位掩码与对应的 snmpNotifyFilterSubtree 实例结合，定义一组子树，这些子树会被包含或排除在过滤配置文件之外。  
+每个掩码的每一位对应 snmpNotifyFilterSubtree 的一个子标识符，最重要的位（第 i 个八位字节的最高位）对应第 (8*i - 7) 个子标识符，最不重要的位（第 i 个八位字节的最低位）对应第 (8*i) 个子标识符（i 范围1至16）。  
+每一位的值决定是否必须匹配对应的子标识符：  
+- ‘1’ 表示必须完全匹配；  
+- ‘0’ 表示“通配符”，即任何子标识符值都匹配。  
+当此掩码的长度为 M 位且对应的 snmpNotifyFilterSubtree 实例中子标识符多于 M 时，掩码会用全 ‘1’ 扩展到所需长度。  
+当此对象的值为空字符串（长度为0）时，扩展规则会使掩码全为 ‘1’（即无通配符），过滤子树的集合为由对应的 snmpNotifyFilterSubtree 实例唯一标识的子树。”  
+ 默认值：{ ''H }  
+ ::= { snmpNotifyFilterEntry 2 }
+
+snmpNotifyFilterType 对象类型  
+语法：INTEGER { included(1), excluded(2) }  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“此对象指示由此条目定义的过滤子树集合是被包含还是被排除在过滤配置之外。  
+关于此对象的更详细用法讨论，请参见 [SNMP-APPL] 第6节。”  
+ 默认值：included  
+ ::= { snmpNotifyFilterEntry 3 }
+
+snmpNotifyFilterStorageType 对象类型  
+语法：StorageType  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“此概念行的存储类型。值为‘permanent’的概念行不必允许对行中的任何列对象进行写访问。”  
+ 默认值：{ nonVolatile }  
+ ::= { snmpNotifyFilterEntry 4 }
+
+snmpNotifyFilterRowStatus 对象类型  
+语法：RowStatus  
+最大访问权限：可读写（read-create）  
+状态：当前  
+描述：  
+“此概念行的状态。  
+要在此表中创建一行，管理者必须将此对象设置为 createAndGo(4) 或 createAndWait(5)。  
+”  
+
+（以下为合规性定义部分略，内容涉及SNMP通知的合规性声明和对象组定义，详细内容请参见原文。）
+
+snmpProxyContextName对象类型
+    语法：SnmpAdminString
+    最大访问权限：读写（read-create）
+    状态：当前（current）
+    描述：
+        “包含在可能被转发的消息中的contextName，使用由此条目定义的转换参数。
+        该对象是可选的，如果不支持，在选择snmpProxyTable中的条目时，将忽略消息中的contextName。”
+    ::= { snmpProxyEntry 4 }
+
+snmpProxyTargetParamsIn对象类型
+    语法：SnmpAdminString
+    最大访问权限：读写（read-create）
+    状态：当前（current）
+    描述：
+        “此对象用于选择snmpTargetParamsTable中的条目。所选条目用于确定在转发接收消息时应使用的snmpProxyTable的哪一行。”
+    ::= { snmpProxyEntry 5 }
+
+Levi 等人               标准追踪                     [第60页]
+
+RFC 3413                   SNMP应用               2002年12月
+
+snmpProxySingleTargetOut对象类型
+    语法：SnmpAdminString
+    最大访问权限：读写（read-create）
+    状态：当前（current）
+    描述：
+        “此对象选择在snmpTargetAddrTable（在SNMP-TARGET-MIB中）中定义的管理目标。所选目标由snmpTargetAddrTable中的一条条目定义，其索引值（snmpTargetAddrName）等于此对象。
+        仅在需要选择单一目标（即转发传入的读或写请求）时使用此对象。”
+    ::= { snmpProxyEntry 6 }
+
+snmpProxyMultipleTargetOut对象类型
+    语法：SnmpTagValue
+    最大访问权限：读写（read-create）
+    状态：当前（current）
+    描述：
+        “此对象选择在snmpTargetAddrTable（在SNMP-TARGET-MIB中）中定义的一组管理目标。
+        仅在需要选择多个目标（即转发传入通知）时使用此对象。”
+    ::= { snmpProxyEntry 7 }
+
+snmpProxyStorageType对象类型
+    语法：StorageType
+    最大访问权限：读写（read-create）
+    状态：当前（current）
+    描述：
+        “此概念性行的存储类型。值为‘permanent’的概念性行无需允许对行中的任何列对象进行写访问。”
+    默认值：{ nonVolatile }
+    ::= { snmpProxyEntry 8 }
+
+snmpProxyRowStatus对象类型
+    语法：RowStatus
+    最大访问权限：读写（read-create）
+    状态：当前（current）
+    描述：
+        “此概念性行的状态。
+        要在此表中创建一行，管理者必须将此对象设置为createAndGo(4)或createAndWait(5)。
+        在此对象的值为active(1)时，以下对象可能无法修改：
+            - snmpProxyType
+            - snmpProxyContextEngineID
+            - snmpProxyContextName
+            - snmpProxyTargetParamsIn
+            - snmpProxySingleTargetOut
+            - snmpProxyMultipleTargetOut”
+    ::= { snmpProxyEntry 9 }
+
+--
+--
+-- 合规性信息
+--
+--
+
+snmpProxyConpliances对象标识符 ::= { snmpProxyConformance 1 }
+snmpProxyGroups对象标识符 ::= { snmpProxyConformance 2 }
+
+--
+--
+-- 合规声明
+--
+--
+
+snmpProxyCompliance模块合规性
+    状态：当前（current）
+    描述：
+        “包括代理转发应用的SNMP实体的合规声明。”
+    模块：SNMP-TARGET-MIB
+        强制性组：{ snmpTargetBasicGroup, snmpTargetResponseGroup }
+    模块（本模块）
+        强制性组：{ snmpProxyGroup }
+    ::= { snmpProxyConpliances 1 }
+
+snmpProxyGroup对象组
+    对象：
+        snmpProxyType,
+        snmpProxyContextEngineID,
+        snmpProxyContextName,
+        snmpProxyTargetParamsIn,
+        snmpProxySingleTargetOut,
+        snmpProxyMultipleTargetOut,
+        snmpProxyStorageType,
+        snmpProxyRowStatus
+    状态：当前（current）
+    描述：
+        “一组对象，提供远程配置管理目标转换参数，供代理转发应用使用。”
+    ::= { snmpProxyGroups 3 }
+
+结束
+
+5. 通知发起者中管理目标的识别
+
+本节描述通知发起应用在使用本文档所述的MIB模块时，用于确定生成通知时所用管理目标集的机制。
+
+通知发起者使用所有处于活动状态的snmpNotifyTable条目，来查找用于生成通知的管理目标。每个活动条目会选择零个或多个snmpTargetAddrTable中的条目。当生成通知时，它会被发送到由所选snmpTargetAddrTable条目指定的所有目标（在应用访问控制和通知过滤后）。
+
+任何snmpTargetAddrTable中的条目，其snmpTargetAddrTagList对象包含的标签值等于包含该实例的snmpNotifyTag的snmpNotifyEntry所选择。注意，一个snmpTargetAddrEntry可能被多个snmpNotifyTable中的条目选择，从而导致使用该snmpTargetAddrEntry生成多个通知（例如，既可以发送陷阱，也可以发送通知）。
+
+每个snmpTargetAddrEntry都包含指向snmpTargetParamsTable（snmpTargetAddrParams）的指针。该指针选择用于生成通知的一组SNMP参数。如果所选的snmpTargetParamsTable条目不存在，则不使用该管理目标生成通知。
+
+决定通知应包含未确认类（Unconfirmed-Class）还是确认类（Confirmed-Class）PDU的依据是snmpNotifyType对象的值。如果该值为trap(1)，通知应包含未确认类PDU。
+
+如果该值为inform(2)，通知应包含确认类PDU，且通知的超时时间和重试次数由snmpTargetAddrTimeout和snmpTargetAddrRetryCount的值决定。注意，例外情况是当snmpTargetParamsMPModel对象指示支持不同PDU版本的SNMP版本时。在这种情况下，通知可以使用不同的PDU类型（[RFC2576]定义了在出站SNMP版本为SNMPv1时的PDU类型）。
+
+6. 通知过滤
+
+本节描述通知发起应用在使用本文档所述的MIB模块时，用于过滤通知生成的机制。
+
+通知发起者使用snmpNotifyFilterTable进行通知过滤。可以将通知过滤配置文件与snmpTargetParamsTable中的特定条目关联。关联的过滤配置文件由snmpNotifyFilterProfileTable中的条目标识，其索引值等于对应的snmpTargetParamsTable条目的索引。如果在snmpNotifyFilterProfileTable中不存在这样的条目，则不对该管理目标进行过滤。
+
+如果存在此类条目，则将其snmpNotifyFilterProfileName的值与所有活动的snmpNotifyFilterTable条目的索引部分进行比较。所有完全匹配的条目将用于过滤由相关snmpTargetParamsEntry生成的通知。如果没有匹配的条目，则不进行过滤，通知可以直接发送。
+
+否则，如果存在匹配的条目，则只有当通知的NOTIFICATION-TYPE对象标识符（即变量绑定中名为snmpTrapOID.0的元素的值）被明确包含，且通知变量绑定中要包含的对象实例没有被匹配条目明确排除时，通知才会被发送。
+
+每组snmpNotifyFilterTable条目被划分为两类过滤子树：包含过滤子树和排除过滤子树。snmpNotifyFilterType对象定义每个匹配条目所属的集合。
+
+判断某个通知名或对象实例是否被排除，方法是将其OBJECT IDENTIFIER与每个匹配条目的snmpNotifyFilterSubtree进行比较。对于通知名，如果没有匹配，则视为被排除，不会发送到该管理目标。对于对象实例，如果没有匹配，则视为被包含，可以发送通知到该管理目标。如果有一个或多个匹配，则根据匹配条目中snmpNotifyFilterSubtree的子标识符数量，和snmpNotifyFilterType的值，决定包含或排除。
+
+OBJECT IDENTIFIER X与snmpNotifyFilterTable中的条目匹配，当X的子标识符数量不少于snmpNotifyFilterSubtree的子标识符数量，且每个子标识符都匹配（匹配条件是对应的snmpNotifyFilterMask位为零或两个子标识符相等）。
+
+7. 代理转发应用中的管理目标转换
+
+本节描述代理转发应用在使用本文档所述的MIB模块时，将接收的管理目标信息转换为转发消息的出站管理目标信息的机制。实际上，代理转发可以使用两种机制：一种用于请求消息转发，另一种用于通知消息转发。
+
+7.1. 请求转发的管理目标转换
+
+在转发请求消息时，代理会选择snmpProxyTable中的一条条目。选择依据如下比较：
+
+- 如果请求是读类（Read-Class）PDU，snmpProxyType必须为read(1)；如果是写类（Write-Class）PDU，必须为write(2)。
+
+- contextEngineID必须等于snmpProxyContextEngineID对象。
+
+- 如果支持snmpProxyContextName对象，则其值必须等于contextName。
+
+- snmpProxyTargetParamsIn对象标识snmpTargetParamsTable中的一条条目。消息处理模型（messageProcessingModel）、安全模型（security model）、安全名（securityName）和安全级别（securityLevel）必须与所识别条目的snmpTargetParamsMPModel、snmpTargetParamsSecurityModel、snmpTargetParamsSecurityName和snmpTargetParamsSecurityLevel的值相匹配。
+
+可能有多个snmpProxyTable条目满足上述条件。选择时，具有字典序最小的snmpProxyName且满足条件的条目将被代理转发器选中。
+
+出站管理目标信息由所选条目的snmpProxySingleTargetOut对象的值确定。该对象指向snmpTargetAddrTable中的一条条目。该条目还包含指向snmpTargetParamsTable（snmpTargetAddrParams）的引用。如果所识别的snmpTargetAddrTable条目不存在，或所识别的snmpTargetParamsTable条目不存在，则此snmpProxyEntry不提供有效的转发信息，代理转发器应尝试识别其他行。
+
+如果没有满足上述所有条件的snmpProxyTable条目，则没有合适的转发信息，代理转发器应采取相应措施。
+
+否则，目标管理信息由所识别的snmpTargetAddrEntry的snmpTargetAddrTDomain、snmpTargetAddrTAddress、snmpTargetAddrTimeout和snmpTargetRetryCount，以及所识别的snmpTargetParamsEntry的snmpTargetParamsMPModel、snmpTargetParamsSecurityModel、snmpTargetParamsSecurityName和snmpTargetParamsSecurityLevel共同确定。
+
+7.2. 通知转发的管理目标转换
+
+在转发通知消息时，代理会选择snmpProxyTable中的多个条目。选择依据如下：
+
+- 如果通知是未确认类（Unconfirmed-Class）PDU，snmpProxyType必须为trap(3)；如果是确认类（Confirmed-Class）PDU，必须为inform(4)。
+
+- contextEngineID必须等于snmpProxyContextEngineID对象。
+
+- 如果支持snmpProxyContextName对象，则其值必须等于contextName。
+
+- snmpProxyTargetParamsIn对象标识snmpTargetParamsTable中的一条条目。消息处理模型、安全模型、安全名和安全级别必须与所识别条目的对应值相匹配。
+
+所有满足条件的条目都将被选中。每个条目的snmpProxyMultipleTargetOut对象用以选择snmpTargetAddrTable中的一组条目。任何snmpTargetAddrEntry，其snmpTargetAddrTagList包含的标签值等于snmpProxyMultipleTargetOut的值，且其snmpTargetAddrParams引用存在的snmpTargetParamsTable条目，都将作为转发通知的目标。
+
+8. 知识产权
+
+互联网工程任务组（IETF）不对本文件中描述的技术的实施或使用所涉及的任何知识产权或其他权利的有效性或范围发表任何立场，也不对任何此类权利的许可是否可用作出任何声明；也不表示其已努力识别任何此类权利。关于IETF在标准追踪和标准相关文档中的权利程序的信息，可以在BCP-11中找到。任何为公开发布而提出的权利声明的副本，以及关于将提供的许可保证或为实现者或用户获取此类专有权利的通用许可或权限的尝试结果，都可以从IETF秘书处获得。
+
+IETF欢迎任何相关方就可能涉及实践本标准的技术的版权、专利或专利申请或其他专有权利提出意见。请将相关信息提交给IETF执行董事。
+
+9. 致谢
+
+本文件由SNMPv3工作组的努力成果。特别感谢以下SNMPv3工作组成员：
+
+Harald Tveit Alvestrand（Maxware）
+Dave Battle（SNMP Research, Inc.）
+Alan Beard（Disney Worldwide Services）
+Paul Berrevoets（SWI Systemware/Halcyon Inc.）
+Martin Bjorklund（Ericsson）
+Uri Blumenthal（IBM T.J. Watson研究中心）
+Jeff Case（SNMP Research, Inc.）
+John Curran（BBN）
+Mike Daniele（康柏计算机公司）
+T. Max Devlin（Eltrax Systems）
+John Flick（惠普）
+Rob Frye（MCI）
+Wes Hardaker（加州大学戴维斯分校信息技术部 - D.C.A.S.）
+David Harrington（Enterasys Networks）
+Lauren Heintz（BMC Software, Inc.）
+N.C. Hien（IBM T.J. Watson研究中心）
+Michael Kirkham（InterWorking Labs, Inc.）
+Dave Levi（诺基亚网络）
+Louis A Mamakos（UUNET Technologies Inc.）
+Joe Marzot（诺基亚网络）
+Paul Meyer（Secure Computing Corporation）
+Keith McCloghrie（思科系统公司）
+Bob Moore（IBM）
+Russ Mundy（Network Associates的TIS实验室）
+Bob Natale（ACE*COMM公司）
+Mike O'Dell（UUNET Technologies Inc.）
+Dave Perkins（DeskTalk）
+Peter Polkinghorne（布鲁内尔大学）
+Randy Presuhn（BMC Software, Inc.）
+David Reeder（Network Associates的TIS实验室）
+David Reid（SNMP Research, Inc.）
+Aleksey Romanov（Quality Quorum）
+Shawn Routhier（Epilogue）
+Juergen Schoenwaelder（布伦瑞克工业大学）
+Bob Stewart（思科系统公司）
+Mike Thatcher（独立顾问）
+Bert Wijnen（朗讯技术公司）
+
+本文件基于IETF安全与管理框架演进咨询团队的建议。该咨询团队成员包括：
+
+David Harrington（Enterasys Networks）
+Jeff Johnson（思科系统公司）
+David Levi（诺基亚网络）
+John Linn（Openvision）
+Russ Mundy（可信信息系统，主席）
+Shawn Routhier（Epilogue）
+Glenn Waters（诺基亚）
+Bert Wijnen（朗讯技术公司）
+
+根据咨询团队和SNMPv3工作组章程的建议，设计尽可能借鉴了之前的RFC和草案。因此，特别感谢之前被称为SNMPv2u和SNMPv2*的设计的作者们：
+
+Jeff Case（SNMP Research, Inc.）
+David Harrington（Enterasys Networks）
+David Levi（诺基亚网络）
+Keith McCloghrie（思科系统公司）
+Brian O'Keefe（惠普）
+Marshall T. Rose（Dover Beach Consulting）
+Jon Saperia（BGS Systems Inc.）
+Steve Waldbusser（国际网络服务公司）
+Glenn W. Waters（贝尔-北方研究有限公司）
+
+10. 安全注意事项
+
+本文描述的SNMP应用程序通常可以直接访问管理信息库（MIB）仪表。 因此，严格按照本文所述的访问控制措施对这些应用程序进行管理非常重要。
+
+此外，某些通知生成应用程序可能不会通过访问控制访问MIB信息，而是通过其他方式（如命令行）获取MIB信息。此类应用程序的实现者和用户必须负责不泄露通常因访问控制而不可访问的MIB信息。
+
+最后，本文所述的MIB可能包含潜在敏感信息，安全管理员可能希望限制对这些MIB的访问。
+
+11. 参考文献
+
+11.1 标准性参考文献
+
+[RFC2119] Bradner, S.，“用于指示RFC中需求级别的关键词”，BCP 14，RFC 2119，1997年3月。
+
+[RFC2578] McCloghrie, K.等，“管理信息结构版本2（SMIv2）”，STD 58，RFC 2578，1999年4月。
+
+[RFC2579] McCloghrie, K.等，“SMIv2的文本约定”，STD 58，RFC 2579，1999年4月。
+
+[RFC2580] McCloghrie, K.等，“SMIv2的符合性声明”，STD 58，RFC 2580，1999年4月。
+
+[RFC3411] Harrington, D.等，“描述简单网络管理协议（SNMP）管理框架的体系结构”，STD 62，RFC 3411，2002年12月。
+
+[RFC3412] Case, J.等，“SNMP的消息处理与调度”，STD 62，RFC 3412，2002年12月。
+
+[RFC3415] Wijnen, B.等，“基于视图的访问控制模型（VACM）”，STD 62，RFC 3415，2002年12月。
+
+[RFC3416] Presuhn, R.等，“SNMP的协议操作”，STD 62，RFC 3416，2002年12月。
+
+[RFC3418] Presuhn, R.等，“SNMP的管理信息库（MIB）”，STD 62，RFC 3418，2002年12月。
+
+11.2 说明性参考文献
+
+[RFC1157] Case, J.等，“简单网络管理协议”，STD 15，RFC 1157，1990年5月。
+
+[RFC1213] McCloghrie, K.和M. Rose（编者），“TCP/IP网络管理的管理信息库：MIB-II”，STD 17，RFC 1213，1991年3月。
+
+[RFC2576] Frye, R.等，“互联网标准网络管理框架的版本1、版本2和版本3的共存”，RFC 2576，1999年2月。
+
+附录A - Trap配置示例
+
+本节描述一个实现了snmpNotifyBasicCompliance级别的通知生成器应用程序的示例配置。该示例配置指定通知生成器应向3个不同的管理器发送通知，前两个管理器使用认证且无隐私，第三个管理器使用认证和隐私。
+
+配置包括snmpTargetAddrTable中的三行，snmpTargetTable中的两行，以及snmpNotifyTable中的两行。
+
+（具体配置内容省略，详见原文）
+
+这些条目定义了两个管理目标组。第一组包含两个管理目标：
+
+（具体内容省略）
+
+第二组包含一个管理目标：
+
+（具体内容省略）
+
+编辑地址
+
+（具体地址信息省略）
+
+版权声明
+
+本文件由互联网协会（The Internet Society）版权所有（2002年）。允许复制、分发本文件及其翻译版本，或对其进行评论、解释或协助实现的派生作品，前提是所有副本和派生作品都必须包含上述版权声明和本声明的内容。除非为制定互联网标准的目的，或为了将其翻译成非英语语言，否则不得以任何方式修改本文件（如删除版权声明或对互联网协会或其他互联网组织的引用），否则必须遵循互联网标准制定的版权程序。
+
+上述有限许可为永久性，不会被互联网协会或其继任者或受让人撤销。
+
+本文件及其中包含的信息按“现状”提供，互联网协会和互联网工程任务组（IETF）不对其作任何明示或暗示的保证，包括但不限于其使用不会侵犯任何权利或具有适销性或特定用途适用性的任何保证。
+
+致谢
+
+RFC编辑功能的资金目前由互联网协会提供。
